@@ -1,3 +1,10 @@
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
+
+/* PENGAMAN: Memastikan Background & Teks Utama Selalu Gelap */
+body {
+  background-color: #111827 !important;
+  color: #D1D5DB !important;
+  font-family: ui-sans-serif, system-ui, sans-serif;
+}
