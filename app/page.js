@@ -49,7 +49,7 @@ export default function AgoraVadaPortal() {
   };
 
   return (
-    <div className="max-w-6xl mx-auto p-8 font-sans">
+    <div className="max-w-6xl mx-auto p-8 font-sans text-gray-900">
       <h1 className="text-3xl font-bold text-center mb-8">⚡ Agora Vada - Portal</h1>
 
       {/* ========================================== */}
