@@ -1,4 +1,5 @@
 "use client";
+
 import React, { useState, useRef, useEffect } from 'react';
 
 export default function AgoraVadaPortal() {
@@ -48,11 +49,6 @@ export default function AgoraVadaPortal() {
   };
 
   return (
-   <div className="max-w-6xl mx-auto p-8 font-sans">
-      <h1 className="text-3xl font-bold text-center mb-8">⚡ Agora Vada - Portal</h1>
-
-    return (
-    // DI SINI UBAHAN LEBARNYA: max-w-4xl diganti jadi max-w-6xl dan p-8
     <div className="max-w-6xl mx-auto p-8 font-sans">
       <h1 className="text-3xl font-bold text-center mb-8">⚡ Agora Vada - Portal</h1>
 
@@ -60,7 +56,7 @@ export default function AgoraVadaPortal() {
       {/* PAGE 1: INPUT LINK BERITA */}
       {/* ========================================== */}
       {currentPage === 1 && (
-        <div className="card border p-8 rounded-lg shadow-sm">
+        <div className="card border p-8 rounded-lg shadow-sm bg-white">
           <h2 className="text-2xl font-bold mb-6">1. Masukkan Link Berita</h2>
           <input 
             type="text" 
@@ -70,7 +66,7 @@ export default function AgoraVadaPortal() {
             onChange={(e) => setUrlBerita(e.target.value)}
           />
           <button 
-            className="w-full bg-blue-600 text-white p-4 rounded font-bold text-lg"
+            className="w-full bg-blue-600 hover:bg-blue-700 transition text-white p-4 rounded font-bold text-lg"
             onClick={async () => {
               if (!urlBerita) return alert("Masukkan link dulu, bos!");
               
@@ -106,25 +102,22 @@ export default function AgoraVadaPortal() {
       {/* PAGE 2: PROMPT MANUAL & EDIT TEKS */}
       {/* ========================================== */}
       {currentPage === 2 && (
-        <div className="card border p-8 rounded-lg shadow-sm">
+        <div className="card border p-8 rounded-lg shadow-sm bg-white">
           <h2 className="text-2xl font-bold mb-6">2. Prompt Manual & Edit Teks</h2>
-          
-          {/* DI SINI UBAHAN TINGGINYA: min-h-[400px] dan text-lg */}
           <textarea 
             className="w-full p-4 border rounded mb-6 min-h-[400px] text-lg leading-relaxed bg-gray-50"
             value={promptTeks}
             onChange={(e) => setPromptTeks(e.target.value)}
           />
-          
           <div className="flex gap-4">
             <button 
-              className="w-1/3 bg-gray-300 p-4 rounded font-bold text-lg"
+              className="w-1/3 bg-gray-300 hover:bg-gray-400 transition p-4 rounded font-bold text-lg"
               onClick={() => setCurrentPage(1)}
             >
               ⬅ Kembali
             </button>
             <button 
-              className="w-2/3 bg-blue-600 text-white p-4 rounded font-bold text-lg"
+              className="w-2/3 bg-blue-600 hover:bg-blue-700 transition text-white p-4 rounded font-bold text-lg"
               onClick={() => setCurrentPage(3)}
             >
               Ke Visual Editor ➔
@@ -137,7 +130,7 @@ export default function AgoraVadaPortal() {
       {/* PAGE 3: EDITOR VISUAL OTOMATIS */}
       {/* ========================================== */}
       {currentPage === 3 && (
-        <div className="card border p-6 rounded-lg shadow-sm">
+        <div className="card border p-6 rounded-lg shadow-sm bg-white">
           <h2 className="text-xl font-bold mb-4">3. Editor Visual Otomatis</h2>
           
           <div className="grid grid-cols-2 gap-6">
@@ -154,7 +147,7 @@ export default function AgoraVadaPortal() {
 
               {/* KONTROL YANG TERSISA (Sesuai Request) */}
               <button 
-                className="w-full bg-yellow-400 text-black p-2 rounded font-bold mb-4"
+                className="w-full bg-yellow-400 hover:bg-yellow-500 transition text-black p-2 rounded font-bold mb-4"
                 onClick={setPosisiStandar}
               >
                 🎯 Kembalikan ke Posisi Standar
@@ -184,13 +177,13 @@ export default function AgoraVadaPortal() {
 
               <div className="mt-8 flex gap-4">
                 <button 
-                  className="w-1/3 bg-gray-300 p-3 rounded font-bold"
+                  className="w-1/3 bg-gray-300 hover:bg-gray-400 transition p-3 rounded font-bold"
                   onClick={() => setCurrentPage(2)}
                 >
                   ⬅ Kembali
                 </button>
                 <button 
-                  className="w-2/3 bg-green-600 text-white p-3 rounded font-bold"
+                  className="w-2/3 bg-green-600 hover:bg-green-700 transition text-white p-3 rounded font-bold"
                   onClick={downloadGambar}
                 >
                   📥 Save Image
@@ -200,15 +193,12 @@ export default function AgoraVadaPortal() {
 
             {/* PANEL KANAN: PREVIEW CANVAS */}
             <div className="bg-gray-100 border rounded flex items-center justify-center p-2">
-               {/* HTML5 Canvas untuk menggambar gambar dan teks persis seperti PIL Python */}
                <canvas 
                  ref={canvasRef} 
-                 width="1080"  // Sesuaikan dengan resolusi template lo
+                 width="1080" 
                  height="1920" 
                  className="w-full h-auto object-contain shadow-md"
                ></canvas>
-               {/* Catatan: Logika useEffect untuk menggambar canvas (seperti font, warna) 
-                   ditulis di script terpisah agar teks bisa muncul langsung saat diketik */}
             </div>
           </div>
         </div>
