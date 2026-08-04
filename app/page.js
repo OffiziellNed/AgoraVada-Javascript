@@ -3,18 +3,12 @@
 import React, { useState, useRef } from 'react';
 
 export default function AgoraVadaPortal() {
-  // === STATE MANAJEMEN HALAMAN ===
   const [currentPage, setCurrentPage] = useState(1);
-
-  // === STATE DATA ===
   const [urlBerita, setUrlBerita] = useState('');
   const [promptTeks, setPromptTeks] = useState('');
-  
-  // === STATE KONTROL VISUAL (Page 3) ===
   const [judul, setJudul] = useState('');
   const [sumberBerita, setSumberBerita] = useState('');
   
-  // Posisi Standar Default
   const [ukuranFont, setUkuranFont] = useState(330);
   const [teksX, setTeksX] = useState(600);
   const [teksY, setTeksY] = useState(3630);
@@ -42,38 +36,33 @@ export default function AgoraVadaPortal() {
   };
 
   return (
-    // Background utama Full Dark Mode
-    <div className="min-h-screen bg-[#0d1117] text-gray-200 py-12 px-4 sm:px-6 lg:px-8 font-sans selection:bg-blue-500 selection:text-white">
-      <div className="max-w-5xl mx-auto">
+    // Background Abu-abu terang, konten selalu di tengah
+    <div className="min-h-screen bg-gray-200 flex flex-col items-center py-12 px-4 font-sans text-black">
+      
+      {/* Kontainer Utama - Dibatasi lebarnya agar rapi di tengah */}
+      <div className="w-full max-w-5xl">
         
-        {/* Header Elegan dengan Gradient Text */}
-        <div className="text-center mb-12">
-          <h1 className="text-4xl md:text-5xl font-extrabold tracking-tight text-transparent bg-clip-text bg-gradient-to-r from-blue-400 via-indigo-400 to-purple-400">
-            ⚡ Agora Vada Portal
-          </h1>
-          <p className="mt-3 text-gray-400 text-lg">Content & Visual Automation Generator</p>
-        </div>
+        <h1 className="text-4xl font-black text-center mb-8 text-gray-800 tracking-wide">
+          ⚡ AGORA VADA
+        </h1>
 
         {/* ========================================== */}
-        {/* PAGE 1: INPUT LINK BERITA */}
+        {/* PAGE 1 */}
         {/* ========================================== */}
         {currentPage === 1 && (
-          <div className="bg-[#161b22] border border-gray-800 rounded-2xl shadow-2xl p-8 md:p-10 transition-all">
-            <h2 className="text-2xl font-bold mb-6 flex items-center gap-3 text-white">
-              <span className="bg-blue-600 text-white w-8 h-8 rounded-full flex items-center justify-center text-sm">1</span> 
-              Masukkan Link Berita
+          <div className="bg-white border border-gray-300 rounded-xl shadow-xl p-8 md:p-12 w-full mx-auto">
+            <h2 className="text-2xl font-extrabold mb-6 text-gray-900 border-b-2 border-gray-200 pb-4">
+              1. Masukkan Link Berita
             </h2>
-            
             <input 
               type="text" 
               placeholder="Paste URL di sini (https://news.com/...)" 
-              className="w-full bg-[#0d1117] border border-gray-700 text-gray-100 placeholder-gray-500 p-4 rounded-xl mb-6 text-lg focus:outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500 transition-all"
+              className="w-full bg-gray-50 border-2 border-gray-300 text-black p-4 rounded-lg mb-6 text-lg focus:outline-none focus:border-blue-600 focus:bg-white transition-colors"
               value={urlBerita}
               onChange={(e) => setUrlBerita(e.target.value)}
             />
-            
             <button 
-              className="w-full bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-500 hover:to-indigo-500 text-white p-4 rounded-xl font-bold text-lg shadow-lg shadow-blue-900/50 transform hover:-translate-y-0.5 transition-all"
+              className="w-full bg-blue-600 hover:bg-blue-700 text-white p-4 rounded-lg font-bold text-xl shadow-md transition-colors"
               onClick={async () => {
                 if (!urlBerita) return alert("Masukkan link dulu, bos!");
                 
@@ -104,30 +93,27 @@ export default function AgoraVadaPortal() {
         )}
 
         {/* ========================================== */}
-        {/* PAGE 2: PROMPT MANUAL & EDIT TEKS */}
+        {/* PAGE 2 */}
         {/* ========================================== */}
         {currentPage === 2 && (
-          <div className="bg-[#161b22] border border-gray-800 rounded-2xl shadow-2xl p-8 md:p-10 transition-all animate-fade-in">
-            <h2 className="text-2xl font-bold mb-6 flex items-center gap-3 text-white">
-              <span className="bg-indigo-600 text-white w-8 h-8 rounded-full flex items-center justify-center text-sm">2</span> 
-              Prompt Manual & Edit Teks
+          <div className="bg-white border border-gray-300 rounded-xl shadow-xl p-8 md:p-12 w-full mx-auto">
+            <h2 className="text-2xl font-extrabold mb-6 text-gray-900 border-b-2 border-gray-200 pb-4">
+              2. Prompt Manual & Edit Teks
             </h2>
-            
             <textarea 
-              className="w-full bg-[#0d1117] border border-gray-700 text-gray-200 p-5 rounded-xl mb-8 min-h-[400px] text-lg leading-relaxed focus:outline-none focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 transition-all custom-scrollbar"
+              className="w-full bg-gray-50 border-2 border-gray-300 text-black p-5 rounded-lg mb-8 min-h-[400px] text-lg leading-relaxed focus:outline-none focus:border-blue-600 focus:bg-white transition-colors"
               value={promptTeks}
               onChange={(e) => setPromptTeks(e.target.value)}
             />
-            
             <div className="flex gap-4">
               <button 
-                className="w-1/3 bg-gray-800 border border-gray-700 hover:bg-gray-700 text-gray-300 p-4 rounded-xl font-bold text-lg transition-all"
+                className="w-1/3 bg-gray-300 hover:bg-gray-400 text-gray-800 p-4 rounded-lg font-bold text-lg transition-colors"
                 onClick={() => setCurrentPage(1)}
               >
                 ⬅ Kembali
               </button>
               <button 
-                className="w-2/3 bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-500 hover:to-purple-500 text-white p-4 rounded-xl font-bold text-lg shadow-lg shadow-purple-900/50 transform hover:-translate-y-0.5 transition-all"
+                className="w-2/3 bg-blue-600 hover:bg-blue-700 text-white p-4 rounded-lg font-bold text-lg shadow-md transition-colors"
                 onClick={() => setCurrentPage(3)}
               >
                 Ke Visual Editor ➔
@@ -137,23 +123,21 @@ export default function AgoraVadaPortal() {
         )}
 
         {/* ========================================== */}
-        {/* PAGE 3: EDITOR VISUAL OTOMATIS */}
+        {/* PAGE 3 */}
         {/* ========================================== */}
         {currentPage === 3 && (
-          <div className="bg-[#161b22] border border-gray-800 rounded-2xl shadow-2xl p-8 md:p-10 transition-all">
-            <h2 className="text-2xl font-bold mb-8 flex items-center gap-3 text-white">
-              <span className="bg-purple-600 text-white w-8 h-8 rounded-full flex items-center justify-center text-sm">3</span> 
-              Editor Visual Otomatis
+          <div className="bg-white border border-gray-300 rounded-xl shadow-xl p-8 md:p-12 w-full mx-auto">
+            <h2 className="text-2xl font-extrabold mb-8 text-gray-900 border-b-2 border-gray-200 pb-4">
+              3. Editor Visual Otomatis
             </h2>
             
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-10">
-              
               {/* PANEL KIRI: KONTROL */}
               <div className="flex flex-col gap-6">
                 <div>
-                  <label className="text-sm font-semibold text-gray-400 block mb-2 uppercase tracking-wider">Edit Judul (Hook):</label>
+                  <label className="font-bold text-gray-800 block mb-2">Edit Judul (Hook):</label>
                   <textarea 
-                    className="w-full bg-[#0d1117] border border-gray-700 text-white p-4 rounded-xl focus:outline-none focus:border-purple-500 min-h-[120px]"
+                    className="w-full bg-gray-50 border-2 border-gray-300 text-black p-4 rounded-lg focus:outline-none focus:border-blue-600 focus:bg-white min-h-[120px] text-lg"
                     value={judul}
                     onChange={(e) => setJudul(e.target.value)}
                     placeholder="Masukkan judul di sini..."
@@ -161,7 +145,7 @@ export default function AgoraVadaPortal() {
                 </div>
 
                 <button 
-                  className="w-full bg-yellow-500/10 border border-yellow-500/50 hover:bg-yellow-500/20 text-yellow-500 p-3 rounded-xl font-bold transition-all flex justify-center items-center gap-2"
+                  className="w-full bg-yellow-400 hover:bg-yellow-500 text-black border-2 border-yellow-500 p-3 rounded-lg font-bold transition-colors"
                   onClick={setPosisiStandar}
                 >
                   🎯 Kembalikan ke Posisi Standar
@@ -169,9 +153,9 @@ export default function AgoraVadaPortal() {
 
                 <div className="grid grid-cols-2 gap-4">
                   <div>
-                    <label className="text-sm font-semibold text-gray-400 block mb-2 uppercase tracking-wider">Rata Teks:</label>
+                    <label className="font-bold text-gray-800 block mb-2">Rata Teks:</label>
                     <select 
-                      className="w-full bg-[#0d1117] border border-gray-700 text-white p-3 rounded-xl focus:outline-none focus:border-purple-500"
+                      className="w-full bg-gray-50 border-2 border-gray-300 text-black p-3 rounded-lg focus:outline-none focus:border-blue-600"
                       value={alignTeks}
                       onChange={(e) => setAlignTeks(e.target.value)}
                     >
@@ -180,25 +164,25 @@ export default function AgoraVadaPortal() {
                     </select>
                   </div>
                   <div>
-                    <label className="text-sm font-semibold text-gray-400 block mb-2 uppercase tracking-wider">Jarak Baris: <span className="text-purple-400">{jarakBaris}</span></label>
+                    <label className="font-bold text-gray-800 block mb-2">Jarak Baris: <span className="text-blue-600">{jarakBaris}</span></label>
                     <input 
                       type="range" min="0.8" max="2.5" step="0.1" 
-                      className="w-full accent-purple-500 mt-2"
+                      className="w-full mt-2 cursor-pointer"
                       value={jarakBaris}
                       onChange={(e) => setJarakBaris(parseFloat(e.target.value))}
                     />
                   </div>
                 </div>
 
-                <div className="mt-auto pt-8 flex gap-4 border-t border-gray-800">
+                <div className="mt-auto pt-8 flex gap-4">
                   <button 
-                    className="w-1/3 bg-gray-800 border border-gray-700 hover:bg-gray-700 text-gray-300 p-4 rounded-xl font-bold transition-all"
+                    className="w-1/3 bg-gray-300 hover:bg-gray-400 text-gray-800 p-4 rounded-lg font-bold text-lg transition-colors"
                     onClick={() => setCurrentPage(2)}
                   >
                     ⬅ Kembali
                   </button>
                   <button 
-                    className="w-2/3 bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-500 hover:to-teal-500 text-white p-4 rounded-xl font-bold shadow-lg shadow-teal-900/50 transform hover:-translate-y-0.5 transition-all flex justify-center items-center gap-2"
+                    className="w-2/3 bg-green-600 hover:bg-green-700 text-white p-4 rounded-lg font-bold text-lg shadow-md transition-colors"
                     onClick={downloadGambar}
                   >
                     📥 Save Image
@@ -207,19 +191,14 @@ export default function AgoraVadaPortal() {
               </div>
 
               {/* PANEL KANAN: PREVIEW CANVAS */}
-              <div className="bg-[#0d1117] border border-gray-800 rounded-2xl flex items-center justify-center p-4 min-h-[400px] relative overflow-hidden group">
-                <div className="absolute inset-0 bg-gradient-to-b from-transparent to-[#161b22]/50 pointer-events-none"></div>
+              <div className="bg-gray-200 border-2 border-gray-300 rounded-lg flex items-center justify-center p-4 min-h-[400px]">
                 <canvas 
                   ref={canvasRef} 
                   width="1080" 
                   height="1920" 
-                  className="w-full h-auto object-contain rounded-lg shadow-2xl relative z-10"
+                  className="w-full h-auto object-contain bg-white rounded shadow-sm border border-gray-300"
                 ></canvas>
-                <div className="absolute top-4 right-4 bg-black/60 text-xs text-gray-300 px-3 py-1 rounded-full backdrop-blur-sm z-20">
-                  Live Preview
-                </div>
               </div>
-
             </div>
           </div>
         )}
