@@ -2,9 +2,17 @@
 @tailwind components;
 @tailwind utilities;
 
-/* PENGAMAN: Memastikan Background & Teks Utama Selalu Gelap */
 body {
-  background-color: #111827 !important;
-  color: #D1D5DB !important;
-  font-family: ui-sans-serif, system-ui, sans-serif;
+  background-color: #0d1117 !important;
+  color: #e6edf3 !important;
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+  margin: 0;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  min-height: 100vh;
+}
+
+#root, main, &__next {
+  width: 100%;
 }
