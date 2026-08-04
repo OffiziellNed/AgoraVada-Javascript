@@ -36,39 +36,65 @@ export default function AgoraVadaPortal() {
   };
 
   return (
-    // mx-auto dan py-12 memastikan card ada di atas-tengah dengan jarak yang pas, tidak kepanjangan ke bawah
-    <div className="min-h-screen bg-gray-950 text-gray-200 py-12 px-4 font-sans">
+    <div style={{ width: '100%', maxWidth: '480px', margin: '0 auto', padding: '20px' }}>
       
-      {/* Kontainer minimalis (max-w-md bikin ukurannya sempit dan rapi di tengah) */}
-      <div className="w-full max-w-md mx-auto">
-        
-        <h1 className="text-2xl font-black text-center mb-8 text-white tracking-widest">
+      {/* JUDUL */}
+      <div style={{ textAlign: 'center', marginBottom: '24px' }}>
+        <h1 style={{ fontSize: '22px', fontWeight: '800', letterSpacing: '1px', color: '#ffffff' }}>
           ⚡ AGORA VADA
         </h1>
+      </div>
 
-        {/* ========================================== */}
-        {/* PAGE 1: INPUT LINK */}
-        {/* ========================================== */}
+      {/* KARTU UTAMA (DI KUNCI UKURANNYA) */}
+      <div style={{ 
+        backgroundColor: '#161b22', 
+        border: '1px solid #30363d', 
+        borderRadius: '16px', 
+        padding: '24px', 
+        boxShadow: '0 10px 25px rgba(0,0,0,0.5)' 
+      }}>
+
+        {/* ================= PAGE 1 ================= */}
         {currentPage === 1 && (
-          <div className="bg-gray-900 border border-gray-800 shadow-2xl rounded-2xl p-6">
-            <h2 className="text-lg font-bold mb-4 text-white border-b border-gray-800 pb-2">
+          <div>
+            <h2 style={{ fontSize: '15px', fontWeight: '700', marginBottom: '16px', color: '#c9d1d9', borderBottom: '1px solid #30363d', paddingBottom: '8px' }}>
               1. Masukkan Link Berita
             </h2>
             <input 
               type="text" 
               placeholder="https://news.com/..." 
-              className="w-full bg-gray-950 border border-gray-800 text-white placeholder-gray-600 p-3 rounded-xl mb-5 text-sm focus:outline-none focus:border-blue-500 transition-colors"
+              style={{
+                width: '100%',
+                backgroundColor: '#0d1117',
+                border: '1px solid #30363d',
+                color: '#ffffff',
+                padding: '12px 14px',
+                borderRadius: '10px',
+                fontSize: '14px',
+                outline: 'none',
+                marginBottom: '16px',
+                boxSizing: 'border-box'
+              }}
               value={urlBerita}
               onChange={(e) => setUrlBerita(e.target.value)}
             />
             <button 
-              className="w-full bg-blue-600 hover:bg-blue-500 text-white p-3 rounded-xl font-bold text-sm shadow-lg transition-all"
+              style={{
+                width: '100%',
+                backgroundColor: '#238636',
+                color: '#ffffff',
+                padding: '12px',
+                borderRadius: '10px',
+                fontWeight: '700',
+                fontSize: '14px',
+                border: 'none',
+                cursor: 'pointer',
+                transition: 'background 0.2s'
+              }}
               onClick={async () => {
                 if (!urlBerita) return alert("Masukkan link dulu, bos!");
-                
                 setPromptTeks("Menyedot data dari web, tunggu sebentar...");
                 setCurrentPage(2);
-                
                 try {
                   const res = await fetch("http://localhost:8000/tarik-berita", {
                     method: "POST",
@@ -92,28 +118,59 @@ export default function AgoraVadaPortal() {
           </div>
         )}
 
-        {/* ========================================== */}
-        {/* PAGE 2: PROMPT & EDIT */}
-        {/* ========================================== */}
+        {/* ================= PAGE 2 ================= */}
         {currentPage === 2 && (
-          <div className="bg-gray-900 border border-gray-800 shadow-2xl rounded-2xl p-6">
-            <h2 className="text-lg font-bold mb-4 text-white border-b border-gray-800 pb-2">
+          <div>
+            <h2 style={{ fontSize: '15px', fontWeight: '700', marginBottom: '16px', color: '#c9d1d9', borderBottom: '1px solid #30363d', paddingBottom: '8px' }}>
               2. Prompt Manual & Edit Teks
             </h2>
             <textarea 
-              className="w-full bg-gray-950 border border-gray-800 text-gray-200 p-3 rounded-xl mb-5 min-h-[300px] text-sm leading-relaxed focus:outline-none focus:border-blue-500 transition-colors"
+              style={{
+                width: '100%',
+                backgroundColor: '#0d1117',
+                border: '1px solid #30363d',
+                color: '#e6edf3',
+                padding: '12px',
+                borderRadius: '10px',
+                fontSize: '13px',
+                minHeight: '260px',
+                outline: 'none',
+                marginBottom: '16px',
+                boxSizing: 'border-box',
+                resize: 'vertical'
+              }}
               value={promptTeks}
               onChange={(e) => setPromptTeks(e.target.value)}
             />
-            <div className="flex gap-3">
+            <div style={{ display: 'flex', gap: '10px' }}>
               <button 
-                className="w-1/3 bg-gray-800 hover:bg-gray-700 text-white p-3 rounded-xl font-bold text-sm transition-colors"
+                style={{
+                  width: '35%',
+                  backgroundColor: '#21262d',
+                  color: '#c9d1d9',
+                  padding: '12px',
+                  borderRadius: '10px',
+                  fontWeight: '600',
+                  fontSize: '13px',
+                  border: '1px solid #30363d',
+                  cursor: 'pointer'
+                }}
                 onClick={() => setCurrentPage(1)}
               >
                 ⬅ Kembali
               </button>
               <button 
-                className="w-2/3 bg-blue-600 hover:bg-blue-500 text-white p-3 rounded-xl font-bold text-sm shadow-lg transition-colors"
+                style={{
+                  width: '65%',
+                  backgroundColor: '#1f6feb',
+                  color: '#ffffff',
+                  padding: '12px',
+                  borderRadius: '10px',
+                  fontWeight: '600',
+                  fontSize: '13px',
+                  border: 'none',
+                  cursor: 'pointer'
+                }}
                 onClick={() => setCurrentPage(3)}
               >
                 Ke Visual Editor ➔
@@ -122,50 +179,78 @@ export default function AgoraVadaPortal() {
           </div>
         )}
 
-        {/* ========================================== */}
-        {/* PAGE 3: VISUAL EDITOR */}
-        {/* ========================================== */}
+        {/* ================= PAGE 3 ================= */}
         {currentPage === 3 && (
-          <div className="bg-gray-900 border border-gray-800 shadow-2xl rounded-2xl p-6">
-            <h2 className="text-lg font-bold mb-4 text-white border-b border-gray-800 pb-2">
+          <div>
+            <h2 style={{ fontSize: '15px', fontWeight: '700', marginBottom: '16px', color: '#c9d1d9', borderBottom: '1px solid #30363d', paddingBottom: '8px' }}>
               3. Editor Visual Otomatis
             </h2>
             
-            <div className="flex flex-col gap-4">
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
               <div>
-                <label className="text-gray-300 font-semibold block mb-1 text-xs uppercase tracking-wider">Edit Judul (Hook):</label>
+                <label style={{ fontSize: '11px', fontWeight: '600', color: '#8b949e', display: 'block', marginBottom: '6px' }}>EDIT JUDUL (HOOK)</label>
                 <textarea 
-                  className="w-full bg-gray-950 border border-gray-800 text-white p-3 rounded-xl focus:outline-none focus:border-blue-500 min-h-[90px] text-sm"
+                  style={{
+                    width: '100%',
+                    backgroundColor: '#0d1117',
+                    border: '1px solid #30363d',
+                    color: '#ffffff',
+                    padding: '10px',
+                    borderRadius: '8px',
+                    fontSize: '13px',
+                    minHeight: '80px',
+                    outline: 'none',
+                    boxSizing: 'border-box'
+                  }}
                   value={judul}
                   onChange={(e) => setJudul(e.target.value)}
-                  placeholder="Masukkan judul di sini..."
+                  placeholder="Masukkan judul..."
                 />
               </div>
 
               <button 
-                className="w-full bg-yellow-500/10 border border-yellow-500/40 text-yellow-400 hover:bg-yellow-500/20 p-2.5 rounded-xl font-bold text-xs transition-colors"
+                style={{
+                  width: '100%',
+                  backgroundColor: 'rgba(210, 153, 34, 0.1)',
+                  border: '1px solid rgba(210, 153, 34, 0.4)',
+                  color: '#f0b429',
+                  padding: '10px',
+                  borderRadius: '8px',
+                  fontWeight: '600',
+                  fontSize: '12px',
+                  cursor: 'pointer'
+                }}
                 onClick={setPosisiStandar}
               >
                 🎯 Kembalikan ke Posisi Standar
               </button>
 
-              <div className="grid grid-cols-2 gap-3">
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px' }}>
                 <div>
-                  <label className="text-gray-300 font-semibold block mb-1 text-xs uppercase tracking-wider">Rata Teks:</label>
+                  <label style={{ fontSize: '11px', fontWeight: '600', color: '#8b949e', display: 'block', marginBottom: '6px' }}>RATA TEKS</label>
                   <select 
-                    className="w-full bg-gray-950 border border-gray-800 text-white p-2.5 rounded-xl focus:outline-none focus:border-blue-500 text-xs"
+                    style={{
+                      width: '100%',
+                      backgroundColor: '#0d1117',
+                      border: '1px solid #30363d',
+                      color: '#ffffff',
+                      padding: '10px',
+                      borderRadius: '8px',
+                      fontSize: '12px',
+                      outline: 'none'
+                    }}
                     value={alignTeks}
-                    onChange={(e) => alignTeks(e.target.value)}
+                    onChange={(e) => setAlignTeks(e.target.value)}
                   >
                     <option value="Tengah">Tengah</option>
                     <option value="Kiri">Kiri</option>
                   </select>
                 </div>
                 <div>
-                  <label className="text-gray-300 font-semibold block mb-1 text-xs uppercase tracking-wider">Jarak: <span className="text-blue-400">{jarakBaris}</span></label>
+                  <label style={{ fontSize: '11px', fontWeight: '600', color: '#8b949e', display: 'block', marginBottom: '6px' }}>JARAK BARIS</label>
                   <input 
                     type="range" min="0.8" max="2.5" step="0.1" 
-                    className="w-full mt-2 accent-blue-500 cursor-pointer"
+                    style={{ width: '100%', marginTop: '8px', accentColor: '#1f6feb', cursor: 'pointer' }}
                     value={jarakBaris}
                     onChange={(e) => setJarakBaris(parseFloat(e.target.value))}
                   />
@@ -173,24 +258,45 @@ export default function AgoraVadaPortal() {
               </div>
 
               {/* CANVAS PREVIEW KECIL */}
-              <div className="bg-gray-950 border border-gray-800 rounded-xl flex items-center justify-center p-2">
+              <div style={{ backgroundColor: '#0d1117', border: '1px solid #30363d', borderRadius: '10px', padding: '10px', textAlign: 'center' }}>
                 <canvas 
                   ref={canvasRef} 
                   width="1080" 
                   height="1920" 
-                  className="w-32 h-auto object-contain rounded shadow-sm border border-gray-800"
+                  style={{ width: '110px', height: 'auto', borderRadius: '6px', border: '1px solid #30363d' }}
                 ></canvas>
               </div>
 
-              <div className="pt-3 flex gap-3 border-t border-gray-800">
+              <div style={{ display: 'flex', gap: '10px', marginTop: '6px' }}>
                 <button 
-                  className="w-1/3 bg-gray-800 hover:bg-gray-700 text-white p-3 rounded-xl font-bold text-sm transition-colors"
+                  style={{
+                    width: '35%',
+                    backgroundColor: '#21262d',
+                    color: '#c9d1d9',
+                    padding: '12px',
+                    borderRadius: '10px',
+                    fontWeight: '600',
+                    fontSize: '13px',
+                    border: '1px solid #30363d',
+                    cursor: 'pointer'
+                  }}
                   onClick={() => setCurrentPage(2)}
                 >
                   ⬅ Kembali
                 </button>
                 <button 
-                  className="w-2/3 bg-green-600 hover:bg-green-500 text-white p-3 rounded-xl font-bold text-sm shadow-lg transition-colors"
+                  style={{
+                    width: '65%',
+                    backgroundColor: '#238636',
+                    color: '#ffffff',
+                    padding: '12px',
+                    borderRadius: '10px',
+                    fontWeight: '700',
+                    fontSize: '13px',
+                    border: 'none',
+                    cursor: 'pointer'
+                  }}
+                  downloadGambar={downloadGambar}
                   onClick={downloadGambar}
                 >
                   📥 Save Image
@@ -199,6 +305,7 @@ export default function AgoraVadaPortal() {
             </div>
           </div>
         )}
+
       </div>
     </div>
   );
