@@ -30,7 +30,6 @@ export default function AgoraVadaPortal() {
 
   const canvasRef = useRef(null);
 
-  // Fungsi Reset Posisi Standar
   const setPosisiStandar = () => {
     setImgX(0);
     setImgY(0);
@@ -61,7 +60,7 @@ export default function AgoraVadaPortal() {
         }
 
         const templateImg = new Image();
-        templateImg.src = '/template.png'; // Pastikan file template.png ada di folder public
+        templateImg.src = '/template.png';
         templateImg.onload = () => {
           ctx.drawImage(templateImg, 0, 0, canvas.width, canvas.height);
           
@@ -121,7 +120,6 @@ export default function AgoraVadaPortal() {
     }
   }, [currentPage, judul, sumberBerita, imageUrl, imgX, imgY, imgScale, teksX, teksY, ukuranFont, jarakBaris, alignTeks]);
 
-  // Handler Drag & Drop langsung di Canvas Preview (Mouse & Touch HP)
   const handleMouseDown = (e) => {
     setIsDragging(true);
     const clientX = e.clientX || (e.touches && e.touches[0].clientX);
@@ -141,7 +139,6 @@ export default function AgoraVadaPortal() {
     setIsDragging(false);
   };
 
-  // Handler Zoom pakai Scroll Mouse
   const handleWheel = (e) => {
     e.preventDefault();
     const zoomIntensity = 0.05;
@@ -171,7 +168,6 @@ export default function AgoraVadaPortal() {
     }
   };
 
-  // Dinamis Lebar Container: Page 3 dibikin lebar/gede, Page 1 & 2 tetap minimalis
   const containerMaxWidth = currentPage === 3 ? '750px' : '480px';
 
   return (
@@ -233,7 +229,8 @@ export default function AgoraVadaPortal() {
                     setPromptTeks("Gagal menarik berita: " + data.detail);
                   }
                 } catch(err) {
-                  setPromptTeks("Error: Pastikan server API Python lo udah nyala di localhost:8000!");
+                  // Jika API mati/gagal, kita biarkan teks error tampil tapi user tetap bisa edit manual
+                  setPromptTeks("Gagal terhubung ke server Python (Localhost mati). Silakan ketik manual atau edit di sini.");
                 }
               }}
             >
@@ -242,7 +239,7 @@ export default function AgoraVadaPortal() {
           </div>
         )}
 
-        {/* PAGE 2 */}
+        {/* PAGE 2: DITAMBAHKAN TOMBOL PAKSA LANJUT */}
         {currentPage === 2 && (
           <div>
             <h2 style={{ fontSize: '15px', fontWeight: '700', marginBottom: '16px', color: '#c9d1d9', borderBottom: '1px solid #30363d', paddingBottom: '8px' }}>
@@ -252,11 +249,12 @@ export default function AgoraVadaPortal() {
               style={{
                 width: '100%', backgroundColor: '#0d1117', border: '1px solid #30363d',
                 color: '#e6edf3', padding: '12px', borderRadius: '10px', fontSize: '13px',
-                minHeight: '260px', outline: 'none', marginBottom: '16px', boxSizing: 'border-box', resize: 'vertical'
+                minHeight: '220px', outline: 'none', marginBottom: '12px', boxSizing: 'border-box', resize: 'vertical'
               }}
               value={promptTeks}
               onChange={(e) => setPromptTeks(e.target.value)}
             />
+            
             <div style={{ display: 'flex', gap: '10px' }}>
               <button 
                 style={{ width: '35%', backgroundColor: '#21262d', color: '#c9d1d9', padding: '12px', borderRadius: '10px', fontWeight: '600', fontSize: '13px', border: '1px solid #30363d', cursor: 'pointer' }}
@@ -274,7 +272,7 @@ export default function AgoraVadaPortal() {
           </div>
         )}
 
-        {/* PAGE 3: VISUAL EDITOR DENGAN PREVIEW BESAR & DRAG INTERAKTIF */}
+        {/* PAGE 3: VISUAL EDITOR */}
         {currentPage === 3 && (
           <div>
             <h2 style={{ fontSize: '15px', fontWeight: '700', marginBottom: '14px', color: '#c9d1d9', borderBottom: '1px solid #30363d', paddingBottom: '8px' }}>
@@ -283,10 +281,7 @@ export default function AgoraVadaPortal() {
             
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px' }}>
               
-              {/* KOLOM KIRI: KONTROL TEKS & SUMBER */}
               <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
-                
-                {/* UPLOAD FOTO MANUAL */}
                 <div>
                   <label style={{ fontSize: '11px', fontWeight: '600', color: '#8b949e', display: 'block', marginBottom: '4px' }}>GANTI / UPLOAD FOTO</label>
                   <input 
@@ -296,7 +291,6 @@ export default function AgoraVadaPortal() {
                   />
                 </div>
 
-                {/* EDIT JUDUL */}
                 <div>
                   <label style={{ fontSize: '11px', fontWeight: '600', color: '#8b949e', display: 'block', marginBottom: '4px' }}>EDIT JUDUL (HOOK)</label>
                   <textarea 
@@ -310,7 +304,6 @@ export default function AgoraVadaPortal() {
                   />
                 </div>
 
-                {/* EDIT SUMBER BERITA (YANG KEMARIN HILANG) */}
                 <div>
                   <label style={{ fontSize: '11px', fontWeight: '600', color: '#8b949e', display: 'block', marginBottom: '4px' }}>SUMBER BERITA</label>
                   <input 
@@ -325,7 +318,6 @@ export default function AgoraVadaPortal() {
                   />
                 </div>
 
-                {/* PENGATURAN ZOOM MANUAL (OPSIONAL SELAIN SCROLL) */}
                 <div style={{ backgroundColor: '#0d1117', padding: '8px', borderRadius: '8px', border: '1px solid #30363d' }}>
                   <span style={{ fontSize: '11px', fontWeight: 'bold', color: '#58a6ff', display: 'block', marginBottom: '4px' }}>Zoom Gambar:</span>
                   <input 
@@ -347,7 +339,6 @@ export default function AgoraVadaPortal() {
                 </button>
               </div>
 
-              {/* KOLOM KANAN: PREVIEW CANVAS UKURAN BESAR & INTERAKTIF */}
               <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center' }}>
                 <span style={{ fontSize: '10px', color: '#8b949e', marginBottom: '4px' }}>*Geser gambar dengan Mouse/Sentuhan & Scroll untuk Zoom</span>
                 <div style={{ 
@@ -373,7 +364,6 @@ export default function AgoraVadaPortal() {
 
             </div>
 
-            {/* TOMBOL NAVIGASI BAWAH */}
             <div style={{ display: 'flex', gap: '8px', marginTop: '16px', borderTop: '1px solid #30363d', paddingTop: '12px' }}>
               <button 
                 style={{ width: '35%', backgroundColor: '#21262d', color: '#c9d1d9', padding: '10px', borderRadius: '8px', fontWeight: '600', fontSize: '12px', border: '1px solid #30363d', cursor: 'pointer' }}
