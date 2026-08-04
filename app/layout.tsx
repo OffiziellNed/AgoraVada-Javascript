@@ -1,16 +1,13 @@
 import './globals.css';
 
-export const metadata = {
-  title: 'Agora Vada Portal',
-  description: 'Content & Visual Automation Generator',
-};
-
-export default function RootLayout({ children }) {
+export default function RootLayout({
+  children,
+}: {
+  children: React.ReactNode;
+}) {
   return (
     <html lang="id">
-      <body className="bg-gray-900 text-gray-200 antialiased">
-        {children}
-      </body>
+      <body>{children}</body>
     </html>
   );
 }
