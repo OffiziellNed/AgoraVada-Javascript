@@ -7,21 +7,17 @@ export default function AgoraVadaPortal() {
   const [urlBerita, setUrlBerita] = useState('');
   const [promptTeks, setPromptTeks] = useState('');
   
-  // State Editor Visual
   const [judul, setJudul] = useState('Halo, apa kabar');
   const [sumberBerita, setSumberBerita] = useState('Sumber: news.com');
   const [imageUrl, setImageUrl] = useState(''); 
   
-  // State Posisi & Skala Gambar Berita (Interaktif Drag & Drop)
   const [imgX, setImgX] = useState(0);
   const [imgY, setImgY] = useState(0);
   const [imgScale, setImgScale] = useState(1);
 
-  // State Interaksi Mouse/Touch Dragging
   const [isDragging, setIsDragging] = useState(false);
   const [dragStart, setDragStart] = useState({ x: 0, y: 0 });
 
-  // State Posisi Teks Judul
   const [teksX, setTeksX] = useState(540);
   const [teksY, setTeksY] = useState(1000);
   const [ukuranFont, setUkuranFont] = useState(65);
@@ -40,7 +36,6 @@ export default function AgoraVadaPortal() {
     setJarakBaris(1.4);
   };
 
-  // Render Canvas Real-time
   useEffect(() => {
     if (currentPage === 3) {
       const canvas = canvasRef.current;
@@ -64,7 +59,6 @@ export default function AgoraVadaPortal() {
         templateImg.onload = () => {
           ctx.drawImage(templateImg, 0, 0, canvas.width, canvas.height);
           
-          // Render Teks Judul (Hook)
           ctx.fillStyle = '#FFFFFF';
           ctx.font = `${ukuranFont}px sans-serif`;
           ctx.textAlign = alignTeks === 'Tengah' ? 'center' : 'left';
@@ -93,7 +87,6 @@ export default function AgoraVadaPortal() {
             ctx.fillText(lines[k], teksX, currentY + (k * lineHeight));
           }
 
-          // Render Sumber Berita
           ctx.fillStyle = '#9CA3AF';
           ctx.font = '35px sans-serif';
           ctx.textAlign = 'center';
@@ -204,42 +197,57 @@ export default function AgoraVadaPortal() {
               value={urlBerita}
               onChange={(e) => setUrlBerita(e.target.value)}
             />
-            <button 
-              style={{
-                width: '100%', backgroundColor: '#238636', color: '#ffffff',
-                padding: '12px', borderRadius: '10px', fontWeight: '700', fontSize: '14px',
-                border: 'none', cursor: 'pointer'
-              }}
-              onClick={async () => {
-                if (!urlBerita) return alert("Masukkan link dulu, bos!");
-                setPromptTeks("Menyedot data dari web, tunggu sebentar...");
-                setCurrentPage(2);
-                try {
-                  const res = await fetch("http://localhost:8000/tarik-berita", {
-                    method: "POST",
-                    headers: { "Content-Type": "application/json" },
-                    body: JSON.stringify({ url: urlBerita })
-                  });
-                  const data = await res.json();
-                  if(data.status === "success") {
-                    setPromptTeks(data.prompt);
-                    setSumberBerita(data.sumber || 'Sumber: news.com');
-                    if(data.gambar_url) setImageUrl(data.gambar_url);
-                  } else {
-                    setPromptTeks("Gagal menarik berita: " + data.detail);
+            
+            <div style={{ display: 'flex', gap: '10px' }}>
+              {/* Tombol Coba Fetch (Kalau Localhost Nyala) */}
+              <button 
+                style={{
+                  width: '50%', backgroundColor: '#21262d', color: '#c9d1d9',
+                  padding: '12px', borderRadius: '10px', fontWeight: '600', fontSize: '13px',
+                  border: '1px solid #30363d', cursor: 'pointer'
+                }}
+                onClick={async () => {
+                  if (!urlBerita) return alert("Masukkan link dulu!");
+                  try {
+                    const res = await fetch("http://localhost:8000/tarik-berita", {
+                      method: "POST",
+                      headers: { "Content-Type": "application/json" },
+                      body: JSON.stringify({ url: urlBerita })
+                    });
+                    const data = await res.json();
+                    if(data.status === "success") {
+                      setPromptTeks(data.prompt);
+                      setSumberBerita(data.sumber || 'Sumber: news.com');
+                      if(data.gambar_url) setImageUrl(data.gambar_url);
+                      setCurrentPage(2);
+                    }
+                  } catch(err) {
+                    alert("Gagal konek ke Python lokal. Gunakan tombol 'Langsung ke Editor' di samping.");
                   }
-                } catch(err) {
-                  // Jika API mati/gagal, kita biarkan teks error tampil tapi user tetap bisa edit manual
-                  setPromptTeks("Gagal terhubung ke server Python (Localhost mati). Silakan ketik manual atau edit di sini.");
-                }
-              }}
-            >
-              Tarik Teks & Lanjut ➔
-            </button>
+                }}
+              >
+                Tarik Data 🔄
+              </button>
+
+              {/* Tombol Langsung Loncat ke Editor (Anti-Macet) */}
+              <button 
+                style={{
+                  width: '50%', backgroundColor: '#238636', color: '#ffffff',
+                  padding: '12px', borderRadius: '10px', fontWeight: '700', fontSize: '13px',
+                  border: 'none', cursor: 'pointer'
+                }}
+                onClick={() => {
+                  if(urlBerita) setSumberBerita(`Sumber: ${new URL(urlBerita).hostname}`);
+                  setCurrentPage(3);
+                }}
+              >
+                Langsung ke Editor ➔
+              </button>
+            </div>
           </div>
         )}
 
-        {/* PAGE 2: DITAMBAHKAN TOMBOL PAKSA LANJUT */}
+        {/* PAGE 2 */}
         {currentPage === 2 && (
           <div>
             <h2 style={{ fontSize: '15px', fontWeight: '700', marginBottom: '16px', color: '#c9d1d9', borderBottom: '1px solid #30363d', paddingBottom: '8px' }}>
@@ -367,7 +375,7 @@ export default function AgoraVadaPortal() {
             <div style={{ display: 'flex', gap: '8px', marginTop: '16px', borderTop: '1px solid #30363d', paddingTop: '12px' }}>
               <button 
                 style={{ width: '35%', backgroundColor: '#21262d', color: '#c9d1d9', padding: '10px', borderRadius: '8px', fontWeight: '600', fontSize: '12px', border: '1px solid #30363d', cursor: 'pointer' }}
-                onClick={() => setCurrentPage(2)}
+                onClick={() => setCurrentPage(1)}
               >
                 ⬅ Kembali
               </button>
