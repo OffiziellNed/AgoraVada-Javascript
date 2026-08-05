@@ -7,10 +7,11 @@ export default function AgoraVadaPortal() {
   const [urlBerita, setUrlBerita] = useState('');
   const [promptTeks, setPromptTeks] = useState('');
   
-  // State Teks
-  const [judul, setJudul] = useState('Halo, [Y]apa kabar[/Y] kawan');
+  // State HTML Teks (Mendukung Rich-Text otomatis tanpa kode [Y]/[W])
+  const [judulHtml, setJudulHtml] = useState('Halo, <span data-color="#E7E820" style="background-color: #E7E820; color: #000; padding: 0 4px; border-radius: 4px;">apa kabar</span> kawan');
   const [sumberBerita, setSumberBerita] = useState('Sumber: news.com');
   const [imageUrl, setImageUrl] = useState(''); 
+  const [customImgLink, setCustomImgLink] = useState('');
   
   // ==========================================
   // STATE POSISI & UKURAN (BOARD KONTROL)
@@ -20,17 +21,17 @@ export default function AgoraVadaPortal() {
   const [imgX, setImgX] = useState(0);
   const [imgY, setImgY] = useState(0);
   const [imgScale, setImgScale] = useState(1);
+  const [isDragging, setIsDragging] = useState(false);
+  const [dragStart, setDragStart] = useState({ x: 0, y: 0 });
 
   // Board 2: Teks Judul 
-  // (State awal dibikin terlihat di kanvas 1350. Kalau ikon 🔒 ditap, baru ke setelan 3630)
-  const [teksX, setTeksX] = useState(540);
+  const [teksX, setTeksX] = useState(50);
   const [teksY, setTeksY] = useState(800);
   const [ukuranFont, setUkuranFont] = useState(65);
   const [jarakBaris, setJarakBaris] = useState(1.4);
-  const [alignTeks, setAlignTeks] = useState('Kiri');
 
   // Board 3: Sumber Berita
-  const [sumberX, setSumberX] = useState(540);
+  const [sumberX, setSumberX] = useState(50);
   const [sumberY, setSumberY] = useState(1250);
   const [ukuranFontSumber, setUkuranFontSumber] = useState(35);
 
@@ -48,81 +49,110 @@ export default function AgoraVadaPortal() {
         await fontSBI.load();
         document.fonts.add(fontSBI);
       } catch (err) {
-        console.warn("Font Poppins gagal di-load. Pastikan file ttf ada di folder public.", err);
+        console.warn("Font Poppins gagal di-load. Pastikan file ada di folder public.", err);
       }
     };
     loadFonts();
   }, []);
 
-  // Fungsi Inject Warna ke Textarea
-  const applyColorTag = (tagStart, tagEnd) => {
-    const textarea = document.getElementById('judul-textarea');
-    if (!textarea) return;
-    const start = textarea.selectionStart;
-    const end = textarea.selectionEnd;
-    if (start === end) return alert("Sorot (blok) teksnya dulu pakai kursor/jari, bos!");
+  // FUNGSI STABILO TEKS (LABEL WARNA)
+  const applyColor = (hexBg, hexText) => {
+    const selection = window.getSelection();
+    if (!selection.rangeCount) return alert("Sorot (blok) teksnya dulu pakai kursor/jari, bos!");
     
-    const selectedText = judul.substring(start, end);
-    const newText = judul.substring(0, start) + tagStart + selectedText + tagEnd + judul.substring(end);
-    setJudul(newText);
+    const range = selection.getRangeAt(0);
+    if (range.collapsed) return alert("Sorot (blok) teksnya dulu!");
+
+    const span = document.createElement('span');
+    span.style.backgroundColor = hexBg;
+    span.style.color = hexText;
+    span.style.padding = '0 4px';
+    span.style.borderRadius = '4px';
+    // Simpan warna untuk dirender ke Kanvas
+    span.dataset.color = hexBg === '#E7E820' ? '#E7E820' : '#FFFFFF';
+
+    try {
+      range.surroundContents(span);
+    } catch (e) {
+      alert("Blok teksnya jangan melewati batas baris/paragraf!");
+      return;
+    }
+
+    const editor = document.getElementById('judul-editor');
+    if (editor) setJudulHtml(editor.innerHTML);
   };
 
-  // MESIN RENDER RICH-TEXT 
-  const renderRichText = (ctx, text, x, y, maxWidth, lineHeight, align, fontStyle) => {
-    const cleanText = (str) => str.replace(/\[Y\]/g, '').replace(/\[\/Y\]/g, '').replace(/\[W\]/g, '').replace(/\[\/W\]/g, '');
-    
+  // MESIN RENDER RICH-TEXT KE KANVAS
+  const renderRichText = (ctx, htmlString, x, y, maxWidth, lineHeight, fontStyle) => {
     ctx.textAlign = 'left'; 
     ctx.textBaseline = 'top'; 
     ctx.font = fontStyle;
 
-    const paragraphs = text.split('\n');
-    let currentY = y;
+    // Bersihkan format HTML jadi baris per baris
+    const cleanHTML = htmlString
+      .replace(/<div[^>]*><br><\/div>/gi, '\n')
+      .replace(/<div[^>]*>/gi, '\n')
+      .replace(/<\/div>/gi, '')
+      .replace(/<br\s*[\/]?>/gi, '\n');
 
-    paragraphs.forEach(paragraph => {
-      const words = paragraph.split(' ');
-      let line = [];
-      let lines = [];
-
-      words.forEach(word => {
-        let testLine = [...line, word].join(' ');
-        let testWidth = ctx.measureText(cleanText(testLine)).width;
-        if (testWidth > maxWidth && line.length > 0) {
-          lines.push(line);
-          line = [word];
-        } else {
-          line.push(word);
-        }
-      });
-      if (line.length > 0) lines.push(line);
-
-      let currentColor = '#FFFFFF'; 
-
-      lines.forEach(lineArr => {
-        const lineString = lineArr.join(' ');
-        const cleanLineString = cleanText(lineString);
-        const lineWidth = ctx.measureText(cleanLineString).width;
-
-        let startX = x;
-        if (align === 'Tengah') {
-          startX = x - (lineWidth / 2); 
-        }
-
-        const chunks = lineString.split(/(\[Y\]|\[\/Y\]|\[W\]|\[\/W\])/).filter(Boolean);
-        let currentX = startX;
-
-        chunks.forEach(chunk => {
-          if (chunk === '[Y]') currentColor = '#E7E820';
-          else if (chunk === '[/Y]') currentColor = '#FFFFFF';
-          else if (chunk === '[W]') currentColor = '#FFFFFF';
-          else if (chunk === '[/W]') currentColor = '#FFFFFF';
-          else {
-            ctx.fillStyle = currentColor;
-            ctx.fillText(chunk, currentX, currentY);
-            currentX += ctx.measureText(chunk).width;
-          }
+    const tempDiv = document.createElement('div');
+    tempDiv.innerHTML = cleanHTML;
+    
+    let wordsWithColor = [];
+    
+    const extract = (node, currentColor) => {
+      if (node.nodeType === Node.TEXT_NODE) {
+        let text = node.textContent;
+        let tokens = text.split('\n');
+        tokens.forEach((lineText, index) => {
+          if (index > 0) wordsWithColor.push({ word: '', color: currentColor, isNewline: true });
+          let words = lineText.split(/\s+/);
+          words.forEach(w => {
+            if (w.trim().length > 0) wordsWithColor.push({ word: w.trim(), color: currentColor, isNewline: false });
+          });
         });
-        currentY += lineHeight;
+      } else if (node.nodeType === Node.ELEMENT_NODE) {
+        let color = currentColor;
+        if (node.dataset && node.dataset.color) color = node.dataset.color;
+        node.childNodes.forEach(child => extract(child, color));
+      }
+    };
+    
+    extract(tempDiv, '#FFFFFF'); // Warna dasar Putih
+
+    let lines = [];
+    let currentLine = [];
+    let currentWidth = 0;
+    const spaceWidth = ctx.measureText(' ').width;
+
+    wordsWithColor.forEach(item => {
+      if (item.isNewline) {
+        lines.push(currentLine);
+        currentLine = [];
+        currentWidth = 0;
+      } else {
+        let wWidth = ctx.measureText(item.word).width;
+        if (currentWidth + wWidth > maxWidth && currentLine.length > 0) {
+          lines.push(currentLine);
+          currentLine = [item];
+          currentWidth = wWidth + spaceWidth;
+        } else {
+          currentLine.push(item);
+          currentWidth += wWidth + spaceWidth;
+        }
+      }
+    });
+    if (currentLine.length > 0) lines.push(currentLine);
+
+    let currentY = y;
+    lines.forEach(lineArr => {
+      let currentX = x;
+      lineArr.forEach(item => {
+        ctx.fillStyle = item.color;
+        ctx.fillText(item.word, currentX, currentY);
+        currentX += ctx.measureText(item.word).width + spaceWidth;
       });
+      currentY += lineHeight;
     });
   };
 
@@ -151,31 +181,19 @@ export default function AgoraVadaPortal() {
           ctx.drawImage(templateImg, 0, 0, canvas.width, canvas.height);
           drawAllTexts(ctx);
         };
-
-        templateImg.onerror = () => {
-          drawAllTexts(ctx);
-        };
+        templateImg.onerror = () => drawAllTexts(ctx);
       };
 
       const drawAllTexts = (ctx) => {
-        // Render Judul dengan Multi-Warna
+        // Render Judul (Rata Kiri Otomatis)
         const fontJudul = `${ukuranFont}px PoppinsSemiBold, sans-serif`;
-        const maxWidth = 900;
         const lh = ukuranFont * jarakBaris;
-        renderRichText(ctx, judul, teksX, teksY, maxWidth, lh, alignTeks, fontJudul);
+        renderRichText(ctx, judulHtml, teksX, teksY, 950, lh, fontJudul);
 
-        // Render Sumber Berita (Warna Putih Solid)
+        // Render Sumber Berita (Rata Kiri Otomatis)
         ctx.fillStyle = '#FFFFFF';
         ctx.font = `${ukuranFontSumber}px PoppinsSemiBold, sans-serif`;
-        
-        let finalSumberX = sumberX;
-        if(alignTeks === 'Tengah' && sumberX === 540) {
-           ctx.textAlign = 'center';
-        } else if (alignTeks === 'Kiri') {
-           ctx.textAlign = 'left';
-        } else {
-           ctx.textAlign = 'left';
-        }
+        ctx.textAlign = 'left';
         ctx.textBaseline = 'top';
         ctx.fillText(sumberBerita, sumberX, sumberY);
       };
@@ -190,31 +208,47 @@ export default function AgoraVadaPortal() {
         renderFinalCanvas(null);
       }
     }
-  }, [currentPage, judul, sumberBerita, imageUrl, imgX, imgY, imgScale, teksX, teksY, ukuranFont, jarakBaris, alignTeks, sumberX, sumberY, ukuranFontSumber]);
+  }, [currentPage, judulHtml, sumberBerita, imageUrl, imgX, imgY, imgScale, teksX, teksY, ukuranFont, jarakBaris, sumberX, sumberY, ukuranFontSumber]);
+
+  // DRAG GAMBAR HANDLERS
+  const handleMouseDown = (e) => {
+    setIsDragging(true);
+    const clientX = e.clientX || (e.touches && e.touches[0].clientX);
+    const clientY = e.clientY || (e.touches && e.touches[0].clientY);
+    setDragStart({ x: clientX - imgX, y: clientY - imgY });
+  };
+  const handleMouseMove = (e) => {
+    if (!isDragging) return;
+    const clientX = e.clientX || (e.touches && e.touches[0].clientX);
+    const clientY = e.clientY || (e.touches && e.touches[0].clientY);
+    setImgX(clientX - dragStart.x);
+    setImgY(clientY - dragStart.y);
+  };
+  const handleMouseUp = () => setIsDragging(false);
+  const handleWheel = (e) => {
+    e.preventDefault();
+    const zoomIntensity = 0.05;
+    if (e.deltaY < 0) setImgScale(p => Math.min(p + zoomIntensity, 5));
+    else setImgScale(p => Math.max(p - zoomIntensity, 0.1));
+  };
 
   const handleUploadFoto = (e) => {
     const file = e.target.files[0];
-    if (file) {
-      const url = URL.createObjectURL(file);
-      setImageUrl(url);
-    }
+    if (file) setImageUrl(URL.createObjectURL(file));
   };
 
   const downloadGambar = () => {
     const canvas = canvasRef.current;
     if (canvas) {
-      const url = canvas.toDataURL("image/jpeg", 0.95);
       const link = document.createElement('a');
       link.download = 'AgoraVada_Post.jpg';
-      link.href = url;
+      link.href = canvas.toDataURL("image/jpeg", 0.95);
       link.click();
     }
   };
 
-  const containerMaxWidth = currentPage === 3 ? '850px' : '480px';
-
   return (
-    <div style={{ width: '100%', maxWidth: containerMaxWidth, margin: '0 auto', padding: '20px', transition: 'max-width 0.3s ease' }}>
+    <div style={{ width: '100%', maxWidth: currentPage === 3 ? '950px' : '480px', margin: '0 auto', padding: '20px', transition: 'max-width 0.3s ease' }}>
       
       <div style={{ textAlign: 'center', marginBottom: '20px' }}>
         <h1 style={{ fontSize: '20px', fontWeight: '800', letterSpacing: '1px', color: '#ffffff' }}>
@@ -222,37 +256,24 @@ export default function AgoraVadaPortal() {
         </h1>
       </div>
 
-      <div style={{ 
-        backgroundColor: '#161b22', 
-        border: '1px solid #30363d', 
-        borderRadius: '16px', 
-        padding: '24px', 
-        boxShadow: '0 10px 25px rgba(0,0,0,0.5)' 
-      }}>
+      <div style={{ backgroundColor: '#161b22', border: '1px solid #30363d', borderRadius: '16px', padding: '24px', boxShadow: '0 10px 25px rgba(0,0,0,0.5)' }}>
 
         {/* ================= PAGE 1 ================= */}
         {currentPage === 1 && (
           <div>
-            <h2 style={{ fontSize: '15px', fontWeight: '700', marginBottom: '16px', color: '#c9d1d9', borderBottom: '1px solid #30363d', paddingBottom: '8px' }}>
-              1. Masukkan Link Berita
-            </h2>
+            <h2 style={{ fontSize: '15px', fontWeight: '700', marginBottom: '16px', color: '#c9d1d9', borderBottom: '1px solid #30363d', paddingBottom: '8px' }}>1. Masukkan Link Berita</h2>
             <input 
-              type="text" 
-              placeholder="https://news.com/..." 
+              type="text" placeholder="https://news.com/..." 
               style={{ width: '100%', backgroundColor: '#0d1117', border: '1px solid #30363d', color: '#ffffff', padding: '12px 14px', borderRadius: '10px', fontSize: '14px', outline: 'none', marginBottom: '16px', boxSizing: 'border-box' }}
-              value={urlBerita}
-              onChange={(e) => setUrlBerita(e.target.value)}
+              value={urlBerita} onChange={(e) => setUrlBerita(e.target.value)}
             />
-            
             <div style={{ display: 'flex', gap: '10px' }}>
               <button 
                 style={{ width: '50%', backgroundColor: '#21262d', color: '#c9d1d9', padding: '12px', borderRadius: '10px', fontWeight: '600', fontSize: '13px', border: '1px solid #30363d', cursor: 'pointer' }}
                 onClick={async () => {
                   if (!urlBerita) return alert("Masukkan link dulu!");
                   try {
-                    const res = await fetch("http://localhost:8000/tarik-berita", {
-                      method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ url: urlBerita })
-                    });
+                    const res = await fetch("http://localhost:8000/tarik-berita", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ url: urlBerita }) });
                     const data = await res.json();
                     if(data.status === "success") {
                       setPromptTeks(data.prompt); setSumberBerita(data.sumber || 'Sumber: news.com');
@@ -265,10 +286,7 @@ export default function AgoraVadaPortal() {
               <button 
                 style={{ width: '50%', backgroundColor: '#238636', color: '#ffffff', padding: '12px', borderRadius: '10px', fontWeight: '700', fontSize: '13px', border: 'none', cursor: 'pointer' }}
                 onClick={() => {
-                  if(urlBerita) {
-                    try { setSumberBerita(`Sumber: ${new URL(urlBerita).hostname}`); } 
-                    catch(e) { setSumberBerita('Sumber: news.com'); }
-                  }
+                  if(urlBerita) { try { setSumberBerita(`Sumber: ${new URL(urlBerita).hostname}`); } catch(e) { setSumberBerita('Sumber: news.com'); } }
                   setCurrentPage(3);
                 }}
               >Langsung ke Editor ➔</button>
@@ -279,13 +297,10 @@ export default function AgoraVadaPortal() {
         {/* ================= PAGE 2 ================= */}
         {currentPage === 2 && (
           <div>
-            <h2 style={{ fontSize: '15px', fontWeight: '700', marginBottom: '16px', color: '#c9d1d9', borderBottom: '1px solid #30363d', paddingBottom: '8px' }}>
-              2. Prompt Manual & Edit Teks
-            </h2>
+            <h2 style={{ fontSize: '15px', fontWeight: '700', marginBottom: '16px', color: '#c9d1d9', borderBottom: '1px solid #30363d', paddingBottom: '8px' }}>2. Prompt Manual & Edit Teks</h2>
             <textarea 
               style={{ width: '100%', backgroundColor: '#0d1117', border: '1px solid #30363d', color: '#e6edf3', padding: '12px', borderRadius: '10px', fontSize: '13px', minHeight: '220px', outline: 'none', marginBottom: '12px', boxSizing: 'border-box', resize: 'vertical' }}
-              value={promptTeks}
-              onChange={(e) => setPromptTeks(e.target.value)}
+              value={promptTeks} onChange={(e) => setPromptTeks(e.target.value)}
             />
             <div style={{ display: 'flex', gap: '10px' }}>
               <button style={{ width: '35%', backgroundColor: '#21262d', color: '#c9d1d9', padding: '12px', borderRadius: '10px', fontWeight: '600', fontSize: '13px', border: '1px solid #30363d', cursor: 'pointer' }} onClick={() => setCurrentPage(1)}>⬅ Kembali</button>
@@ -298,74 +313,67 @@ export default function AgoraVadaPortal() {
         {currentPage === 3 && (
           <div style={{ display: 'flex', flexDirection: 'column', gap: '24px' }}>
             
-            {/* PREVIEW BESAR */}
-            <div>
-              <h2 style={{ fontSize: '16px', fontWeight: '700', marginBottom: '12px', color: '#c9d1d9', textAlign: 'center' }}>
+            {/* BAGIAN ATAS: LIVE PREVIEW & SUMBER GAMBAR KANAN */}
+            <div style={{ backgroundColor: '#0d1117', border: '1px solid #30363d', borderRadius: '12px', padding: '20px' }}>
+              <h2 style={{ fontSize: '16px', fontWeight: '700', marginBottom: '16px', color: '#c9d1d9', textAlign: 'center' }}>
                 LIVE PREVIEW (1080 x 1350)
               </h2>
-              <div style={{ backgroundColor: '#0d1117', border: '2px dashed #30363d', borderRadius: '10px', padding: '10px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                <canvas 
-                  ref={canvasRef} 
-                  width="1080" 
-                  height="1350" 
-                  style={{ width: '300px', height: 'auto', borderRadius: '6px', border: '1px solid #30363d' }}
-                ></canvas>
+              <div style={{ display: 'flex', gap: '24px', alignItems: 'center', justifyContent: 'center', flexWrap: 'wrap' }}>
+                
+                {/* KANVAS KIRI */}
+                <div style={{ border: '2px dashed #30363d', borderRadius: '10px', padding: '8px', cursor: isDragging ? 'grabbing' : 'grab' }}>
+                  <canvas 
+                    ref={canvasRef} width="1080" height="1350" 
+                    onMouseDown={handleMouseDown} onMouseMove={handleMouseMove} onMouseUp={handleMouseUp} onMouseLeave={handleMouseUp}
+                    onTouchStart={handleMouseDown} onTouchMove={handleMouseMove} onTouchEnd={handleMouseUp} onWheel={handleWheel}
+                    style={{ width: '280px', height: 'auto', borderRadius: '6px', display: 'block', touchAction: 'none' }}
+                  ></canvas>
+                </div>
+
+                {/* BOARD GAMBAR (DI SEBELAH KANAN PREVIEW) */}
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '16px', width: '280px' }}>
+                  <div style={{ backgroundColor: '#161b22', padding: '16px', borderRadius: '10px', border: '1px solid #30363d' }}>
+                    <label style={{ fontSize: '11px', fontWeight: '700', color: '#3fb950', display: 'block', marginBottom: '8px' }}>🖼️ UPLOAD DARI PC/HP</label>
+                    <input type="file" accept="image/*" onChange={handleUploadFoto} style={{ fontSize: '11px', color: '#c9d1d9', width: '100%' }} />
+                  </div>
+                  <div style={{ backgroundColor: '#161b22', padding: '16px', borderRadius: '10px', border: '1px solid #30363d' }}>
+                    <label style={{ fontSize: '11px', fontWeight: '700', color: '#58a6ff', display: 'block', marginBottom: '8px' }}>🌐 AMBIL DARI LINK</label>
+                    <input type="text" placeholder="https://domain.com/foto.jpg" style={{ width: '100%', padding: '10px', borderRadius: '6px', backgroundColor: '#0d1117', color: '#fff', border: '1px solid #30363d', fontSize: '12px', marginBottom: '10px', boxSizing: 'border-box' }} value={customImgLink} onChange={(e) => setCustomImgLink(e.target.value)} />
+                    <button style={{ width: '100%', backgroundColor: '#1f6feb', color: '#fff', padding: '10px', borderRadius: '6px', fontWeight: 'bold', fontSize: '12px', border: 'none', cursor: 'pointer' }} onClick={() => setImageUrl(customImgLink)}>Sedot Gambar ⬇</button>
+                  </div>
+                </div>
+
               </div>
             </div>
 
-            {/* KONTROL BOARDS */}
+            {/* KONTROL BOARDS BAWAH */}
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '20px' }}>
               
-              {/* KOLOM KIRI: EDIT TEKS, WARNA & SUMBER */}
+              {/* KOLOM KIRI: EDIT TEKS & SUMBER */}
               <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
                 
                 {/* BOARD EDIT TEKS & WARNA */}
                 <div style={{ backgroundColor: '#0d1117', padding: '16px', borderRadius: '12px', border: '1px solid #30363d' }}>
-                  <label style={{ fontSize: '11px', fontWeight: '700', color: '#58a6ff', display: 'block', marginBottom: '10px', letterSpacing: '1px' }}>📝 EDIT JUDUL, WARNA & ALIGN</label>
+                  <label style={{ fontSize: '11px', fontWeight: '700', color: '#a371f7', display: 'block', marginBottom: '10px', letterSpacing: '1px' }}>📝 EDIT JUDUL (BLOK TEKS & KLIK WARNA)</label>
                   
-                  {/* BARIS ALAT: WARNA & ALIGN */}
-                  <div style={{ display: 'flex', gap: '12px', marginBottom: '10px', alignItems: 'center', flexWrap: 'wrap' }}>
-                    
-                    {/* TOMBOL WARNA */}
-                    <div style={{ display: 'flex', gap: '6px', alignItems: 'center' }}>
-                      <span style={{ fontSize: '10px', color: '#8b949e', marginRight: '4px' }}>Warna:</span>
-                      <button onClick={() => applyColorTag('[W]', '[/W]')} style={{ backgroundColor: '#FFFFFF', color: '#000', padding: '6px 12px', borderRadius: '6px', fontSize: '10px', fontWeight: 'bold', cursor: 'pointer', border: 'none' }}>Putih</button>
-                      <button onClick={() => applyColorTag('[Y]', '[/Y]')} style={{ backgroundColor: '#E7E820', color: '#000', padding: '6px 12px', borderRadius: '6px', fontSize: '10px', fontWeight: 'bold', cursor: 'pointer', border: 'none' }}>Kuning</button>
-                    </div>
-
-                    <div style={{ width: '1px', height: '20px', backgroundColor: '#30363d' }}></div>
-
-                    {/* SIMBOL RATA TEKS */}
-                    <div style={{ display: 'flex', gap: '6px', alignItems: 'center' }}>
-                      <span style={{ fontSize: '10px', color: '#8b949e', marginRight: '4px' }}>Align:</span>
-                      <button 
-                        onClick={() => setAlignTeks('Kiri')} 
-                        style={{ padding: '6px 10px', borderRadius: '6px', backgroundColor: alignTeks === 'Kiri' ? '#1f6feb' : '#21262d', color: '#fff', border: '1px solid #30363d', cursor: 'pointer', display: 'flex', alignItems: 'center' }}
-                        title="Rata Kiri"
-                      >
-                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><line x1="3" y1="6" x2="21" y2="6"></line><line x1="3" y1="12" x2="15" y2="12"></line><line x1="3" y1="18" x2="21" y2="18"></line></svg>
-                      </button>
-                      <button 
-                        onClick={() => setAlignTeks('Tengah')} 
-                        style={{ padding: '6px 10px', borderRadius: '6px', backgroundColor: alignTeks === 'Tengah' ? '#1f6feb' : '#21262d', color: '#fff', border: '1px solid #30363d', cursor: 'pointer', display: 'flex', alignItems: 'center' }}
-                        title="Rata Tengah"
-                      >
-                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><line x1="3" y1="6" x2="21" y2="6"></line><line x1="6" y1="12" x2="18" y2="12"></line><line x1="3" y1="18" x2="21" y2="18"></line></svg>
-                      </button>
-                    </div>
+                  <div style={{ display: 'flex', gap: '8px', marginBottom: '10px', alignItems: 'center' }}>
+                    <button onClick={() => applyColor('#FFFFFF', '#000000')} style={{ backgroundColor: '#FFFFFF', color: '#000', padding: '6px 12px', borderRadius: '6px', fontSize: '11px', fontWeight: 'bold', cursor: 'pointer', border: 'none' }}>Putih</button>
+                    <button onClick={() => applyColor('#E7E820', '#000000')} style={{ backgroundColor: '#E7E820', color: '#000', padding: '6px 12px', borderRadius: '6px', fontSize: '11px', fontWeight: 'bold', cursor: 'pointer', border: 'none' }}>Kuning</button>
                   </div>
 
-                  <textarea 
-                    id="judul-textarea"
-                    style={{ width: '100%', backgroundColor: '#161b22', border: '1px solid #30363d', color: '#ffffff', padding: '10px', borderRadius: '8px', fontSize: '13px', minHeight: '90px', outline: 'none', boxSizing: 'border-box' }}
-                    value={judul}
-                    onChange={(e) => setJudul(e.target.value)}
+                  {/* EDITOR RICH TEXT PENGGANTI TEXTAREA */}
+                  <div 
+                    id="judul-editor"
+                    contentEditable
+                    onInput={(e) => setJudulHtml(e.currentTarget.innerHTML)}
+                    ref={(el) => { if (el && el.innerHTML === '') el.innerHTML = judulHtml; }}
+                    style={{ width: '100%', backgroundColor: '#161b22', border: '1px solid #30363d', color: '#ffffff', padding: '12px', borderRadius: '8px', fontSize: '13px', minHeight: '90px', outline: 'none', boxSizing: 'border-box', overflowY: 'auto' }}
                   />
                 </div>
 
                 {/* BOARD EDIT SUMBER BERITA */}
                 <div style={{ backgroundColor: '#0d1117', padding: '16px', borderRadius: '12px', border: '1px solid #30363d' }}>
-                  <label style={{ fontSize: '11px', fontWeight: '700', color: '#58a6ff', display: 'block', marginBottom: '8px', letterSpacing: '1px' }}>🔗 SUMBER BERITA</label>
+                  <label style={{ fontSize: '11px', fontWeight: '700', color: '#f78166', display: 'block', marginBottom: '8px', letterSpacing: '1px' }}>🔗 SUMBER BERITA</label>
                   <input 
                     type="text" 
                     style={{ width: '100%', backgroundColor: '#161b22', border: '1px solid #30363d', color: '#ffffff', padding: '10px', borderRadius: '8px', fontSize: '13px', outline: 'none', boxSizing: 'border-box' }}
@@ -375,16 +383,12 @@ export default function AgoraVadaPortal() {
                 </div>
               </div>
 
-              {/* KOLOM KANAN: BOARDS KONTROL KOORDINAT */}
+              {/* KOLOM KANAN: BOARDS KONTROL POSISI & SKALA */}
               <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
                 
                 {/* BOARD KONTROL GAMBAR */}
                 <div style={{ backgroundColor: '#0d1117', padding: '12px 16px', borderRadius: '12px', border: '1px solid #30363d' }}>
-                  <label style={{ fontSize: '11px', fontWeight: '700', color: '#3fb950', display: 'flex', justifyContent: 'space-between', marginBottom: '8px' }}>
-                    <span>🖼️ KONTROL GAMBAR</span>
-                    <input type="file" accept="image/*" onChange={handleUploadFoto} style={{ fontSize: '9px', width: '90px' }} />
-                  </label>
-                  
+                  <label style={{ fontSize: '11px', fontWeight: '700', color: '#3fb950', display: 'block', marginBottom: '8px' }}>🖼️ KONTROL SKALA GAMBAR</label>
                   <div style={{ display: 'grid', gridTemplateColumns: '1fr', gap: '8px' }}>
                     <div>
                       <span style={{ fontSize: '10px', color: '#8b949e', display: 'flex', justifyContent: 'space-between' }}><span>Zoom Skala</span> <span>{imgScale.toFixed(2)}</span></span>
@@ -401,17 +405,11 @@ export default function AgoraVadaPortal() {
                   </div>
                 </div>
 
-                {/* BOARD KONTROL TEKS JUDUL (ADA IKON GEMBOK) */}
+                {/* BOARD KONTROL TEKS JUDUL (ADA IKON REFRESH) */}
                 <div style={{ backgroundColor: '#0d1117', padding: '12px 16px', borderRadius: '12px', border: '1px solid #30363d' }}>
                   <label style={{ fontSize: '11px', fontWeight: '700', color: '#a371f7', display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px' }}>
                     <span>✨ KONTROL POSISI JUDUL</span>
-                    <button 
-                      onClick={() => { setTeksX(600); setTeksY(3630); setUkuranFont(330); setJarakBaris(1.4); }} 
-                      style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: '14px', padding: 0 }} 
-                      title="Kunci Posisi Standar Awal"
-                    >
-                      🔒
-                    </button>
+                    <button onClick={() => { setTeksX(600); setTeksY(3630); setUkuranFont(330); setJarakBaris(1.4); }} style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: '14px', padding: 0 }} title="Kembalikan ke Setelan Awal">🔄</button>
                   </label>
                   <div style={{ display: 'grid', gridTemplateColumns: '1fr', gap: '8px' }}>
                     <div>
@@ -429,17 +427,11 @@ export default function AgoraVadaPortal() {
                   </div>
                 </div>
 
-                {/* BOARD KONTROL SUMBER BERITA (ADA IKON GEMBOK) */}
+                {/* BOARD KONTROL SUMBER BERITA (ADA IKON REFRESH) */}
                 <div style={{ backgroundColor: '#0d1117', padding: '12px 16px', borderRadius: '12px', border: '1px solid #30363d' }}>
                   <label style={{ fontSize: '11px', fontWeight: '700', color: '#f78166', display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px' }}>
                     <span>📍 KONTROL POSISI SUMBER</span>
-                    <button 
-                      onClick={() => { setSumberX(540); setSumberY(1250); setUkuranFontSumber(35); }} 
-                      style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: '14px', padding: 0 }} 
-                      title="Kunci Posisi Standar Awal"
-                    >
-                      🔒
-                    </button>
+                    <button onClick={() => { setSumberX(540); setSumberY(1250); setUkuranFontSumber(35); }} style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: '14px', padding: 0 }} title="Kembalikan ke Setelan Awal">🔄</button>
                   </label>
                   <div style={{ display: 'grid', gridTemplateColumns: '1fr', gap: '8px' }}>
                     <div>
