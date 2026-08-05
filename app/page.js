@@ -7,37 +7,35 @@ export default function AgoraVadaPortal() {
   const [urlBerita, setUrlBerita] = useState('');
   const [promptTeks, setPromptTeks] = useState('');
   
-  // State HTML Teks (Mendukung Rich-Text otomatis tanpa kode [Y]/[W])
-  const [judulHtml, setJudulHtml] = useState('Halo, <span data-color="#E7E820" style="background-color: #E7E820; color: #000; padding: 0 4px; border-radius: 4px;">apa kabar</span> kawan');
-  const [sumberBerita, setSumberBerita] = useState('Sumber: news.com');
+  // State HTML Teks dengan default kuning untuk 3 baris awal (Sesuai contoh gambar)
+  const [judulHtml, setJudulHtml] = useState('<font color="#e7e820">Presiden BEM Unmul<br>Mendadak Mundur<br>Usai Sowan ke Jokowi,</font><br><font color="#ffffff">Ada Apa ya?</font>');
+  const [sumberBerita, setSumberBerita] = useState('Sumber Berita: regional.kompas.com');
   const [imageUrl, setImageUrl] = useState(''); 
   const [customImgLink, setCustomImgLink] = useState('');
   
   // ==========================================
-  // STATE POSISI & UKURAN (BOARD KONTROL)
+  // STATE POSISI & UKURAN (KALIBRASI SESUAI GAMBAR)
   // ==========================================
   
-  // Board 1: Gambar
   const [imgX, setImgX] = useState(0);
   const [imgY, setImgY] = useState(0);
   const [imgScale, setImgScale] = useState(1);
   const [isDragging, setIsDragging] = useState(false);
   const [dragStart, setDragStart] = useState({ x: 0, y: 0 });
 
-  // Board 2: Teks Judul 
-  const [teksX, setTeksX] = useState(50);
+  // Standar Awal Judul Sesuai Gambar
+  const [teksX, setTeksX] = useState(110);
   const [teksY, setTeksY] = useState(800);
-  const [ukuranFont, setUkuranFont] = useState(65);
+  const [ukuranFont, setUkuranFont] = useState(75);
   const [jarakBaris, setJarakBaris] = useState(1.4);
 
-  // Board 3: Sumber Berita
-  const [sumberX, setSumberX] = useState(50);
-  const [sumberY, setSumberY] = useState(1250);
-  const [ukuranFontSumber, setUkuranFontSumber] = useState(35);
+  // Standar Awal Sumber Berita Sesuai Gambar
+  const [sumberX, setSumberX] = useState(110);
+  const [sumberY, setSumberY] = useState(710);
+  const [ukuranFontSumber, setUkuranFontSumber] = useState(30);
 
   const canvasRef = useRef(null);
 
-  // Load Custom Font (Poppins)
   useEffect(() => {
     const loadFonts = async () => {
       try {
@@ -55,40 +53,18 @@ export default function AgoraVadaPortal() {
     loadFonts();
   }, []);
 
-  // FUNGSI STABILO TEKS (LABEL WARNA)
-  const applyColor = (hexBg, hexText) => {
-    const selection = window.getSelection();
-    if (!selection.rangeCount) return alert("Sorot (blok) teksnya dulu pakai kursor/jari, bos!");
-    
-    const range = selection.getRangeAt(0);
-    if (range.collapsed) return alert("Sorot (blok) teksnya dulu!");
-
-    const span = document.createElement('span');
-    span.style.backgroundColor = hexBg;
-    span.style.color = hexText;
-    span.style.padding = '0 4px';
-    span.style.borderRadius = '4px';
-    // Simpan warna untuk dirender ke Kanvas
-    span.dataset.color = hexBg === '#E7E820' ? '#E7E820' : '#FFFFFF';
-
-    try {
-      range.surroundContents(span);
-    } catch (e) {
-      alert("Blok teksnya jangan melewati batas baris/paragraf!");
-      return;
-    }
-
+  // FUNGSI FORMATTING EDITOR
+  const handleFormat = (command, value = null) => {
+    document.execCommand(command, false, value);
     const editor = document.getElementById('judul-editor');
     if (editor) setJudulHtml(editor.innerHTML);
   };
 
-  // MESIN RENDER RICH-TEXT KE KANVAS
-  const renderRichText = (ctx, htmlString, x, y, maxWidth, lineHeight, fontStyle) => {
+  // MESIN RENDER RICH-TEXT (Membaca tag <font> dan <i>)
+  const renderRichText = (ctx, htmlString, x, y, maxWidth, lineHeight, baseFontSize) => {
     ctx.textAlign = 'left'; 
     ctx.textBaseline = 'top'; 
-    ctx.font = fontStyle;
 
-    // Bersihkan format HTML jadi baris per baris
     const cleanHTML = htmlString
       .replace(/<div[^>]*><br><\/div>/gi, '\n')
       .replace(/<div[^>]*>/gi, '\n')
@@ -98,40 +74,51 @@ export default function AgoraVadaPortal() {
     const tempDiv = document.createElement('div');
     tempDiv.innerHTML = cleanHTML;
     
-    let wordsWithColor = [];
+    let wordsWithContext = [];
     
-    const extract = (node, currentColor) => {
+    const extract = (node, currentContext) => {
       if (node.nodeType === Node.TEXT_NODE) {
         let text = node.textContent;
         let tokens = text.split('\n');
         tokens.forEach((lineText, index) => {
-          if (index > 0) wordsWithColor.push({ word: '', color: currentColor, isNewline: true });
+          if (index > 0) wordsWithContext.push({ word: '', ...currentContext, isNewline: true });
           let words = lineText.split(/\s+/);
           words.forEach(w => {
-            if (w.trim().length > 0) wordsWithColor.push({ word: w.trim(), color: currentColor, isNewline: false });
+            if (w.trim().length > 0) wordsWithContext.push({ word: w.trim(), ...currentContext, isNewline: false });
           });
         });
       } else if (node.nodeType === Node.ELEMENT_NODE) {
-        let color = currentColor;
-        if (node.dataset && node.dataset.color) color = node.dataset.color;
-        node.childNodes.forEach(child => extract(child, color));
+        let newContext = { ...currentContext };
+        const tag = node.tagName.toLowerCase();
+        
+        if (tag === 'i' || tag === 'em') newContext.isItalic = true;
+        if (node.style && node.style.color) newContext.color = node.style.color;
+        if (tag === 'font' && node.getAttribute('color')) newContext.color = node.getAttribute('color');
+        
+        node.childNodes.forEach(child => extract(child, newContext));
       }
     };
     
-    extract(tempDiv, '#FFFFFF'); // Warna dasar Putih
+    extract(tempDiv, { color: '#FFFFFF', isItalic: false }); 
 
     let lines = [];
     let currentLine = [];
     let currentWidth = 0;
+    
+    // Set font sementara untuk mengukur spasi
+    ctx.font = `${baseFontSize}px PoppinsSemiBold, sans-serif`;
     const spaceWidth = ctx.measureText(' ').width;
 
-    wordsWithColor.forEach(item => {
+    wordsWithContext.forEach(item => {
       if (item.isNewline) {
         lines.push(currentLine);
         currentLine = [];
         currentWidth = 0;
       } else {
+        const fontName = item.isItalic ? 'PoppinsSemiBoldItalic' : 'PoppinsSemiBold';
+        ctx.font = `${baseFontSize}px ${fontName}, sans-serif`;
         let wWidth = ctx.measureText(item.word).width;
+        
         if (currentWidth + wWidth > maxWidth && currentLine.length > 0) {
           lines.push(currentLine);
           currentLine = [item];
@@ -148,6 +135,8 @@ export default function AgoraVadaPortal() {
     lines.forEach(lineArr => {
       let currentX = x;
       lineArr.forEach(item => {
+        const fontName = item.isItalic ? 'PoppinsSemiBoldItalic' : 'PoppinsSemiBold';
+        ctx.font = `${baseFontSize}px ${fontName}, sans-serif`;
         ctx.fillStyle = item.color;
         ctx.fillText(item.word, currentX, currentY);
         currentX += ctx.measureText(item.word).width + spaceWidth;
@@ -185,14 +174,13 @@ export default function AgoraVadaPortal() {
       };
 
       const drawAllTexts = (ctx) => {
-        // Render Judul (Rata Kiri Otomatis)
-        const fontJudul = `${ukuranFont}px PoppinsSemiBold, sans-serif`;
+        // Render Judul (Selalu Rata Kiri)
         const lh = ukuranFont * jarakBaris;
-        renderRichText(ctx, judulHtml, teksX, teksY, 950, lh, fontJudul);
+        renderRichText(ctx, judulHtml, teksX, teksY, 950, lh, ukuranFont);
 
-        // Render Sumber Berita (Rata Kiri Otomatis)
+        // Render Sumber Berita (Otomatis Italic)
         ctx.fillStyle = '#FFFFFF';
-        ctx.font = `${ukuranFontSumber}px PoppinsSemiBold, sans-serif`;
+        ctx.font = `${ukuranFontSumber}px PoppinsSemiBoldItalic, sans-serif`;
         ctx.textAlign = 'left';
         ctx.textBaseline = 'top';
         ctx.fillText(sumberBerita, sumberX, sumberY);
@@ -315,13 +303,14 @@ export default function AgoraVadaPortal() {
             
             {/* BAGIAN ATAS: LIVE PREVIEW & SUMBER GAMBAR KANAN */}
             <div style={{ backgroundColor: '#0d1117', border: '1px solid #30363d', borderRadius: '12px', padding: '20px' }}>
-              <h2 style={{ fontSize: '16px', fontWeight: '700', marginBottom: '16px', color: '#c9d1d9', textAlign: 'center' }}>
+              {/* TULISAN LIVE PREVIEW RATA KIRI TEPAT DI ATAS BOARD */}
+              <h2 style={{ fontSize: '14px', fontWeight: '700', marginBottom: '12px', color: '#8b949e', textAlign: 'left', letterSpacing: '1px' }}>
                 LIVE PREVIEW (1080 x 1350)
               </h2>
-              <div style={{ display: 'flex', gap: '24px', alignItems: 'center', justifyContent: 'center', flexWrap: 'wrap' }}>
+              <div style={{ display: 'flex', gap: '24px', alignItems: 'flex-start', justifyContent: 'center', flexWrap: 'wrap' }}>
                 
                 {/* KANVAS KIRI */}
-                <div style={{ border: '2px dashed #30363d', borderRadius: '10px', padding: '8px', cursor: isDragging ? 'grabbing' : 'grab' }}>
+                <div style={{ border: '2px dashed #30363d', borderRadius: '10px', padding: '8px', cursor: isDragging ? 'grabbing' : 'grab', backgroundColor: '#161b22' }}>
                   <canvas 
                     ref={canvasRef} width="1080" height="1350" 
                     onMouseDown={handleMouseDown} onMouseMove={handleMouseMove} onMouseUp={handleMouseUp} onMouseLeave={handleMouseUp}
@@ -349,25 +338,26 @@ export default function AgoraVadaPortal() {
             {/* KONTROL BOARDS BAWAH */}
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '20px' }}>
               
-              {/* KOLOM KIRI: EDIT TEKS & SUMBER */}
+              {/* KOLOM KIRI: EDIT TEKS & SUMBER SERTA KONTROL SUMBER */}
               <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
                 
                 {/* BOARD EDIT TEKS & WARNA */}
                 <div style={{ backgroundColor: '#0d1117', padding: '16px', borderRadius: '12px', border: '1px solid #30363d' }}>
-                  <label style={{ fontSize: '11px', fontWeight: '700', color: '#a371f7', display: 'block', marginBottom: '10px', letterSpacing: '1px' }}>📝 EDIT JUDUL (BLOK TEKS & KLIK WARNA)</label>
+                  <label style={{ fontSize: '11px', fontWeight: '700', color: '#a371f7', display: 'block', marginBottom: '10px', letterSpacing: '1px' }}>📝 EDIT JUDUL (BLOK TEKS & KLIK FORMAT)</label>
                   
                   <div style={{ display: 'flex', gap: '8px', marginBottom: '10px', alignItems: 'center' }}>
-                    <button onClick={() => applyColor('#FFFFFF', '#000000')} style={{ backgroundColor: '#FFFFFF', color: '#000', padding: '6px 12px', borderRadius: '6px', fontSize: '11px', fontWeight: 'bold', cursor: 'pointer', border: 'none' }}>Putih</button>
-                    <button onClick={() => applyColor('#E7E820', '#000000')} style={{ backgroundColor: '#E7E820', color: '#000', padding: '6px 12px', borderRadius: '6px', fontSize: '11px', fontWeight: 'bold', cursor: 'pointer', border: 'none' }}>Kuning</button>
+                    <button onClick={() => handleFormat('foreColor', '#E7E820')} style={{ backgroundColor: '#E7E820', color: '#000', padding: '6px 12px', borderRadius: '6px', fontSize: '11px', fontWeight: 'bold', cursor: 'pointer', border: 'none' }}>Kuning</button>
+                    <button onClick={() => handleFormat('italic')} style={{ backgroundColor: '#21262d', color: '#fff', padding: '6px 14px', borderRadius: '6px', fontSize: '12px', fontWeight: 'bold', fontStyle: 'italic', cursor: 'pointer', border: '1px solid #30363d' }}>I</button>
+                    <div style={{ width: '1px', height: '16px', backgroundColor: '#30363d', margin: '0 4px' }}></div>
+                    <button onClick={() => { handleFormat('foreColor', '#ffffff'); handleFormat('italic', false); }} style={{ backgroundColor: 'transparent', color: '#c9d1d9', padding: '6px 10px', borderRadius: '6px', fontSize: '10px', cursor: 'pointer', border: '1px solid #30363d' }}>Teks Dasar</button>
                   </div>
 
-                  {/* EDITOR RICH TEXT PENGGANTI TEXTAREA */}
                   <div 
                     id="judul-editor"
                     contentEditable
                     onInput={(e) => setJudulHtml(e.currentTarget.innerHTML)}
                     ref={(el) => { if (el && el.innerHTML === '') el.innerHTML = judulHtml; }}
-                    style={{ width: '100%', backgroundColor: '#161b22', border: '1px solid #30363d', color: '#ffffff', padding: '12px', borderRadius: '8px', fontSize: '13px', minHeight: '90px', outline: 'none', boxSizing: 'border-box', overflowY: 'auto' }}
+                    style={{ width: '100%', backgroundColor: '#161b22', border: '1px solid #30363d', color: '#ffffff', padding: '12px', borderRadius: '8px', fontSize: '14px', minHeight: '110px', outline: 'none', boxSizing: 'border-box', overflowY: 'auto', lineHeight: '1.5' }}
                   />
                 </div>
 
@@ -381,9 +371,34 @@ export default function AgoraVadaPortal() {
                     onChange={(e) => setSumberBerita(e.target.value)}
                   />
                 </div>
+
+                {/* BOARD KONTROL SUMBER BERITA (DIPINDAHKAN KE KIRI BAWAH) */}
+                <div style={{ backgroundColor: '#0d1117', padding: '12px 16px', borderRadius: '12px', border: '1px solid #30363d' }}>
+                  <label style={{ fontSize: '11px', fontWeight: '700', color: '#f78166', display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px' }}>
+                    <span>📍 KONTROL SUMBER BERITA</span>
+                    <button onClick={() => { setSumberX(110); setSumberY(710); setUkuranFontSumber(30); }} style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: '14px', padding: 0 }} title="Kembalikan ke Setelan Awal">🔄</button>
+                  </label>
+                  <div style={{ display: 'grid', gridTemplateColumns: '1fr', gap: '8px' }}>
+                    <div>
+                      <span style={{ fontSize: '10px', color: '#8b949e', display: 'flex', justifyContent: 'space-between' }}><span>Ukuran Font</span> <span>{ukuranFontSumber}</span></span>
+                      <input type="range" min="15" max="150" step="1" value={ukuranFontSumber} onChange={(e) => setUkuranFontSumber(parseInt(e.target.value))} style={{ width: '100%', accentColor: '#f78166' }} />
+                    </div>
+                    <div style={{ display: 'flex', gap: '8px' }}>
+                      <div style={{ flex: 1 }}>
+                        <span style={{ fontSize: '10px', color: '#8b949e', display: 'flex', justifyContent: 'space-between' }}><span>Geser X</span></span>
+                        <input type="range" min="0" max="1080" step="10" value={sumberX} onChange={(e) => setSumberX(parseInt(e.target.value))} style={{ width: '100%', accentColor: '#f78166' }} />
+                      </div>
+                      <div style={{ flex: 1 }}>
+                        <span style={{ fontSize: '10px', color: '#8b949e', display: 'flex', justifyContent: 'space-between' }}><span>Geser Y</span></span>
+                        <input type="range" min="0" max="1350" step="10" value={sumberY} onChange={(e) => setSumberY(parseInt(e.target.value))} style={{ width: '100%', accentColor: '#f78166' }} />
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
               </div>
 
-              {/* KOLOM KANAN: BOARDS KONTROL POSISI & SKALA */}
+              {/* KOLOM KANAN: BOARDS KONTROL POSISI & SKALA GAMBAR & JUDUL */}
               <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
                 
                 {/* BOARD KONTROL GAMBAR */}
@@ -405,11 +420,11 @@ export default function AgoraVadaPortal() {
                   </div>
                 </div>
 
-                {/* BOARD KONTROL TEKS JUDUL (ADA IKON REFRESH) */}
+                {/* BOARD KONTROL TEKS JUDUL (ADA IKON REFRESH & JARAK BARIS) */}
                 <div style={{ backgroundColor: '#0d1117', padding: '12px 16px', borderRadius: '12px', border: '1px solid #30363d' }}>
                   <label style={{ fontSize: '11px', fontWeight: '700', color: '#a371f7', display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px' }}>
                     <span>✨ KONTROL POSISI JUDUL</span>
-                    <button onClick={() => { setTeksX(600); setTeksY(3630); setUkuranFont(330); setJarakBaris(1.4); }} style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: '14px', padding: 0 }} title="Kembalikan ke Setelan Awal">🔄</button>
+                    <button onClick={() => { setTeksX(110); setTeksY(800); setUkuranFont(75); setJarakBaris(1.4); }} style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: '14px', padding: 0 }} title="Kembalikan ke Setelan Awal">🔄</button>
                   </label>
                   <div style={{ display: 'grid', gridTemplateColumns: '1fr', gap: '8px' }}>
                     <div>
@@ -418,35 +433,15 @@ export default function AgoraVadaPortal() {
                     </div>
                     <div>
                       <span style={{ fontSize: '10px', color: '#8b949e', display: 'flex', justifyContent: 'space-between' }}><span>Geser X</span> <span>{teksX}</span></span>
-                      <input type="range" min="-500" max="1500" step="10" value={teksX} onChange={(e) => setTeksX(parseInt(e.target.value))} style={{ width: '100%', accentColor: '#a371f7' }} />
+                      <input type="range" min="-500" max="1080" step="10" value={teksX} onChange={(e) => setTeksX(parseInt(e.target.value))} style={{ width: '100%', accentColor: '#a371f7' }} />
                     </div>
                     <div>
                       <span style={{ fontSize: '10px', color: '#8b949e', display: 'flex', justifyContent: 'space-between' }}><span>Geser Y (Atas/Bawah)</span> <span>{teksY}</span></span>
-                      <input type="range" min="-500" max="4000" step="10" value={teksY} onChange={(e) => setTeksY(parseInt(e.target.value))} style={{ width: '100%', accentColor: '#a371f7' }} />
+                      <input type="range" min="-500" max="2000" step="10" value={teksY} onChange={(e) => setTeksY(parseInt(e.target.value))} style={{ width: '100%', accentColor: '#a371f7' }} />
                     </div>
-                  </div>
-                </div>
-
-                {/* BOARD KONTROL SUMBER BERITA (ADA IKON REFRESH) */}
-                <div style={{ backgroundColor: '#0d1117', padding: '12px 16px', borderRadius: '12px', border: '1px solid #30363d' }}>
-                  <label style={{ fontSize: '11px', fontWeight: '700', color: '#f78166', display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px' }}>
-                    <span>📍 KONTROL POSISI SUMBER</span>
-                    <button onClick={() => { setSumberX(540); setSumberY(1250); setUkuranFontSumber(35); }} style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: '14px', padding: 0 }} title="Kembalikan ke Setelan Awal">🔄</button>
-                  </label>
-                  <div style={{ display: 'grid', gridTemplateColumns: '1fr', gap: '8px' }}>
-                    <div>
-                      <span style={{ fontSize: '10px', color: '#8b949e', display: 'flex', justifyContent: 'space-between' }}><span>Ukuran Font</span> <span>{ukuranFontSumber}</span></span>
-                      <input type="range" min="15" max="150" step="1" value={ukuranFontSumber} onChange={(e) => setUkuranFontSumber(parseInt(e.target.value))} style={{ width: '100%', accentColor: '#f78166' }} />
-                    </div>
-                    <div style={{ display: 'flex', gap: '8px' }}>
-                      <div style={{ flex: 1 }}>
-                        <span style={{ fontSize: '10px', color: '#8b949e', display: 'flex', justifyContent: 'space-between' }}><span>Geser X</span></span>
-                        <input type="range" min="0" max="1080" step="10" value={sumberX} onChange={(e) => setSumberX(parseInt(e.target.value))} style={{ width: '100%', accentColor: '#f78166' }} />
-                      </div>
-                      <div style={{ flex: 1 }}>
-                        <span style={{ fontSize: '10px', color: '#8b949e', display: 'flex', justifyContent: 'space-between' }}><span>Geser Y</span></span>
-                        <input type="range" min="0" max="2000" step="10" value={sumberY} onChange={(e) => setSumberY(parseInt(e.target.value))} style={{ width: '100%', accentColor: '#f78166' }} />
-                      </div>
+                    <div style={{ marginTop: '4px', paddingTop: '8px', borderTop: '1px dashed #30363d' }}>
+                      <span style={{ fontSize: '10px', color: '#8b949e', display: 'flex', justifyContent: 'space-between' }}><span>Jarak Antar Kalimat</span> <span>{jarakBaris}</span></span>
+                      <input type="range" min="0.8" max="2.5" step="0.1" value={jarakBaris} onChange={(e) => setJarakBaris(parseFloat(e.target.value))} style={{ width: '100%', accentColor: '#a371f7' }} />
                     </div>
                   </div>
                 </div>
