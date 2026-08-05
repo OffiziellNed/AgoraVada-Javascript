@@ -46,6 +46,7 @@ export default function AgoraVadaPortal() {
       ctx.fillRect(0, 0, canvas.width, canvas.height);
 
       const renderFinalCanvas = (bgImg) => {
+        // 1. Gambar Foto Berita (Layer Bawah)
         if (bgImg) {
           ctx.save();
           const drawW = bgImg.width * imgScale;
@@ -54,51 +55,56 @@ export default function AgoraVadaPortal() {
           ctx.restore();
         }
 
+        // 2. Gambar Template Agora Vada (Layer Atas dengan nama file asli ber-spasi)
         const templateImg = new Image();
-        templateImg.src = '/template.png';
+        templateImg.src = '/Agora Vada Template.png';
+        
         templateImg.onload = () => {
           ctx.drawImage(templateImg, 0, 0, canvas.width, canvas.height);
-          
-          ctx.fillStyle = '#FFFFFF';
-          ctx.font = `${ukuranFont}px sans-serif`;
-          ctx.textAlign = alignTeks === 'Tengah' ? 'center' : 'left';
-          
-          const words = judul.split(' ');
-          let line = '';
-          let lines = [];
-          let maxWidth = 900;
-
-          for(let n = 0; n < words.length; n++) {
-            let testLine = line + words[n] + ' ';
-            let metrics = ctx.measureText(testLine);
-            let testWidth = metrics.width;
-            if (testWidth > maxWidth && n > 0) {
-              lines.push(line);
-              line = words[n] + ' ';
-            } else {
-              line = testLine;
-            }
-          }
-          lines.push(line);
-
-          let currentY = teksY;
-          let lineHeight = ukuranFont * jarakBaris;
-          for (let k = 0; k < lines.length; k++) {
-            ctx.fillText(lines[k], teksX, currentY + (k * lineHeight));
-          }
-
-          ctx.fillStyle = '#9CA3AF';
-          ctx.font = '35px sans-serif';
-          ctx.textAlign = 'center';
-          ctx.fillText(sumberBerita, 540, 1800);
+          drawTextAndLayers(ctx);
         };
 
         templateImg.onerror = () => {
-          ctx.fillStyle = '#FFFFFF';
-          ctx.font = `${ukuranFont}px sans-serif`;
-          ctx.textAlign = 'center';
-          ctx.fillText(judul, teksX, teksY);
+          console.warn("File /Agora Vada Template.png tidak ditemukan di folder public!");
+          drawTextAndLayers(ctx);
         };
+      };
+
+      const drawTextAndLayers = (ctx) => {
+        // 3. Render Teks Judul (Hook)
+        ctx.fillStyle = '#FFFFFF';
+        ctx.font = `${ukuranFont}px sans-serif`;
+        ctx.textAlign = alignTeks === 'Tengah' ? 'center' : 'left';
+        
+        const words = judul.split(' ');
+        let line = '';
+        let lines = [];
+        let maxWidth = 900;
+
+        for(let n = 0; n < words.length; n++) {
+          let testLine = line + words[n] + ' ';
+          let metrics = ctx.measureText(testLine);
+          let testWidth = metrics.width;
+          if (testWidth > maxWidth && n > 0) {
+            lines.push(line);
+            line = words[n] + ' ';
+          } else {
+            line = testLine;
+          }
+        }
+        lines.push(line);
+
+        let currentY = teksY;
+        let lineHeight = ukuranFont * jarakBaris;
+        for (let k = 0; k < lines.length; k++) {
+          ctx.fillText(lines[k], teksX, currentY + (k * lineHeight));
+        }
+
+        // 4. Render Sumber Berita
+        ctx.fillStyle = '#9CA3AF';
+        ctx.font = '35px sans-serif';
+        ctx.textAlign = 'center';
+        ctx.fillText(sumberBerita, 540, 1800);
       };
 
       if (imageUrl) {
@@ -199,7 +205,6 @@ export default function AgoraVadaPortal() {
             />
             
             <div style={{ display: 'flex', gap: '10px' }}>
-              {/* Tombol Coba Fetch (Kalau Localhost Nyala) */}
               <button 
                 style={{
                   width: '50%', backgroundColor: '#21262d', color: '#c9d1d9',
@@ -229,7 +234,6 @@ export default function AgoraVadaPortal() {
                 Tarik Data 🔄
               </button>
 
-              {/* Tombol Langsung Loncat ke Editor (Anti-Macet) */}
               <button 
                 style={{
                   width: '50%', backgroundColor: '#238636', color: '#ffffff',
@@ -237,7 +241,13 @@ export default function AgoraVadaPortal() {
                   border: 'none', cursor: 'pointer'
                 }}
                 onClick={() => {
-                  if(urlBerita) setSumberBerita(`Sumber: ${new URL(urlBerita).hostname}`);
+                  if(urlBerita) {
+                    try {
+                      setSumberBerita(`Sumber: ${new URL(urlBerita).hostname}`);
+                    } catch(e) {
+                      setSumberBerita('Sumber: news.com');
+                    }
+                  }
                   setCurrentPage(3);
                 }}
               >
