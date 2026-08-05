@@ -30,7 +30,7 @@ export default function AgoraVadaPortal() {
   const [jarakBaris, setJarakBaris] = useState(1.4);
 
   // Standar Awal Sumber Berita 
-  const [sumberX, setSumberX] = useState(110);
+  const [sumberX, setSumberX] = useState(142); // <-- Diubah jadi 142
   const [sumberY, setSumberY] = useState(710);
   const [ukuranFontSumber, setUkuranFontSumber] = useState(28);
 
@@ -312,7 +312,7 @@ export default function AgoraVadaPortal() {
             <div style={{ backgroundColor: '#0d1117', border: '1px solid #30363d', borderRadius: '12px', padding: '20px' }}>
               <div style={{ display: 'flex', gap: '24px', alignItems: 'flex-start', justifyContent: 'center', flexWrap: 'wrap' }}>
                 
-                {/* KANVAS KIRI */}
+                {/* KANVAS KIRI (BESERTA TULISAN RATA TENGAH TEPAT DI ATASNYA) */}
                 <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
                   <h2 style={{ fontSize: '14px', fontWeight: '700', marginBottom: '12px', color: '#8b949e', textAlign: 'center', letterSpacing: '1px' }}>
                     LIVE PREVIEW (1080 x 1350)
@@ -383,7 +383,8 @@ export default function AgoraVadaPortal() {
                 <div style={{ backgroundColor: '#0d1117', padding: '12px 16px', borderRadius: '12px', border: '1px solid #30363d' }}>
                   <label style={{ fontSize: '11px', fontWeight: '700', color: '#f78166', display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px' }}>
                     <span>📍 KONTROL SUMBER BERITA</span>
-                    <button onClick={() => { setSumberX(110); setSumberY(710); setUkuranFontSumber(28); }} style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: '14px', padding: 0 }} title="Kembalikan ke Setelan Awal">🔄</button>
+                    {/* <-- REFRESH X KEMBALI KE 142 --> */}
+                    <button onClick={() => { setSumberX(142); setSumberY(710); setUkuranFontSumber(28); }} style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: '14px', padding: 0 }} title="Kembalikan ke Setelan Awal">🔄</button>
                   </label>
                   <div style={{ display: 'grid', gridTemplateColumns: '1fr', gap: '8px' }}>
                     <div>
