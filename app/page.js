@@ -10,7 +10,6 @@ export default function AgoraVadaPortal() {
   const [judulHtml, setJudulHtml] = useState('');
   const [sumberBerita, setSumberBerita] = useState('');
   const [imageUrl, setImageUrl] = useState(''); 
-  const [customImgLink, setCustomImgLink] = useState('');
   
   const [isCopied, setIsCopied] = useState(false);
   
@@ -31,11 +30,10 @@ export default function AgoraVadaPortal() {
 
   const canvasRef = useRef(null);
 
-  // CACHE MEMORY UNTUK GAMBAR (Biar gak ngelag & blank pas digeser)
+  // CACHE MEMORY UNTUK GAMBAR
   const [loadedBgImg, setLoadedBgImg] = useState(null);
   const [templateImgObj, setTemplateImgObj] = useState(null);
 
-  // 1. INIT: Load Font & Template di awal
   useEffect(() => {
     const loadFonts = async () => {
       try {
@@ -52,13 +50,11 @@ export default function AgoraVadaPortal() {
     };
     loadFonts();
 
-    // Cache Template Image
     const tImg = new Image();
     tImg.src = '/Agora Vada Template.png';
     tImg.onload = () => setTemplateImgObj(tImg);
   }, []);
 
-  // 2. MESIN PENYEDOT GAMBAR (3-Lapis Proxy System)
   useEffect(() => {
     if (!imageUrl) {
       setLoadedBgImg(null);
@@ -76,7 +72,6 @@ export default function AgoraVadaPortal() {
         img.src = url;
       });
 
-      // Kalau gambar dari PC Lokal (blob), langsung load tanpa proxy
       if (!imageUrl.startsWith('http')) {
         try { 
           const img = await tryLoad(imageUrl); 
@@ -85,25 +80,23 @@ export default function AgoraVadaPortal() {
         return;
       }
 
-      // 3 Lapis Proxy untuk menjebol blokir website berita (CORS)
       const proxies = [
         `https://api.allorigins.win/raw?url=${encodeURIComponent(imageUrl)}`,
         `https://wsrv.nl/?url=${encodeURIComponent(imageUrl)}`,
         `https://corsproxy.io/?${encodeURIComponent(imageUrl)}`,
-        imageUrl // Last resort (tanpa proxy)
+        imageUrl 
       ];
 
       for (let proxy of proxies) {
         try {
           const img = await tryLoad(proxy);
           if (!isCancelled) setLoadedBgImg(img);
-          return; // Berhenti kalau 1 proxy sukses
+          return; 
         } catch(e) {
-          continue; // Coba proxy selanjutnya kalau gagal
+          continue; 
         }
       }
 
-      // Kalau ke-3 proxy gagal (Proteksi anti-bot sangat kuat)
       if (!isCancelled) {
         setLoadedBgImg(null);
         alert("Server website memblokir akses gambar ini. Silakan download gambarnya secara manual, lalu gunakan menu 'UPLOAD DARI PC/HP'.");
@@ -204,18 +197,15 @@ export default function AgoraVadaPortal() {
     });
   };
 
-  // 3. MESIN RENDER KANVAS (Sinkron, Cepat, Tanpa Kedip)
   useEffect(() => {
     if (currentPage !== 3) return;
     const canvas = canvasRef.current;
     if (!canvas) return;
     const ctx = canvas.getContext('2d');
 
-    // Gambar BG Hitam
     ctx.fillStyle = '#111827';
     ctx.fillRect(0, 0, canvas.width, canvas.height);
 
-    // Gambar Foto Berita (yang sudah ter-cache)
     if (loadedBgImg) {
       ctx.save();
       const drawW = loadedBgImg.width * imgScale;
@@ -224,12 +214,10 @@ export default function AgoraVadaPortal() {
       ctx.restore();
     }
 
-    // Gambar Template Agora Vada
     if (templateImgObj) {
       ctx.drawImage(templateImgObj, 0, 0, canvas.width, canvas.height);
     }
 
-    // Gambar Teks
     const lh = ukuranFont * jarakBaris;
     renderRichText(ctx, judulHtml, teksX, teksY, 950, lh, ukuranFont);
 
@@ -418,11 +406,6 @@ export default function AgoraVadaPortal() {
                   <div style={{ backgroundColor: '#161b22', padding: '16px', borderRadius: '10px', border: '1px solid #30363d' }}>
                     <label style={{ fontSize: '11px', fontWeight: '700', color: '#3fb950', display: 'block', marginBottom: '8px' }}>🖼️ UPLOAD DARI PC/HP</label>
                     <input type="file" accept="image/*" onChange={handleUploadFoto} style={{ fontSize: '11px', color: '#c9d1d9', width: '100%' }} />
-                  </div>
-                  <div style={{ backgroundColor: '#161b22', padding: '16px', borderRadius: '10px', border: '1px solid #30363d' }}>
-                    <label style={{ fontSize: '11px', fontWeight: '700', color: '#58a6ff', display: 'block', marginBottom: '8px' }}>🌐 AMBIL DARI LINK</label>
-                    <input type="text" placeholder="https://domain.com/foto.jpg" style={{ width: '100%', padding: '10px', borderRadius: '6px', backgroundColor: '#0d1117', color: '#fff', border: '1px solid #30363d', fontSize: '12px', marginBottom: '10px', boxSizing: 'border-box' }} value={customImgLink} onChange={(e) => setCustomImgLink(e.target.value)} />
-                    <button style={{ width: '100%', backgroundColor: '#1f6feb', color: '#fff', padding: '10px', borderRadius: '6px', fontWeight: 'bold', fontSize: '12px', border: 'none', cursor: 'pointer' }} onClick={() => { if (customImgLink) setImageUrl(customImgLink); }}>Sedot Gambar ⬇</button>
                   </div>
                 </div>
 
