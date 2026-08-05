@@ -7,10 +7,15 @@ export default function AgoraVadaPortal() {
   const [urlBerita, setUrlBerita] = useState('');
   const [promptTeks, setPromptTeks] = useState('');
   
+  // State HTML Teks KOSONG
   const [judulHtml, setJudulHtml] = useState('');
   const [sumberBerita, setSumberBerita] = useState('');
   const [imageUrl, setImageUrl] = useState(''); 
   const [customImgLink, setCustomImgLink] = useState('');
+  
+  // ==========================================
+  // STATE POSISI & UKURAN (KALIBRASI SESUAI GAMBAR)
+  // ==========================================
   
   const [imgX, setImgX] = useState(0);
   const [imgY, setImgY] = useState(0);
@@ -18,11 +23,13 @@ export default function AgoraVadaPortal() {
   const [isDragging, setIsDragging] = useState(false);
   const [dragStart, setDragStart] = useState({ x: 0, y: 0 });
 
+  // Standar Awal Judul 
   const [teksX, setTeksX] = useState(140);
   const [teksY, setTeksY] = useState(800);
   const [ukuranFont, setUkuranFont] = useState(79);
   const [jarakBaris, setJarakBaris] = useState(1.4);
 
+  // Standar Awal Sumber Berita 
   const [sumberX, setSumberX] = useState(142); 
   const [sumberY, setSumberY] = useState(710);
   const [ukuranFontSumber, setUkuranFontSumber] = useState(28);
@@ -46,12 +53,14 @@ export default function AgoraVadaPortal() {
     loadFonts();
   }, []);
 
+  // FUNGSI FORMATTING EDITOR
   const handleFormat = (command, value = null) => {
     document.execCommand(command, false, value);
     const editor = document.getElementById('judul-editor');
     if (editor) setJudulHtml(editor.innerHTML);
   };
 
+  // MESIN RENDER RICH-TEXT 
   const renderRichText = (ctx, htmlString, x, y, maxWidth, lineHeight, baseFontSize) => {
     if (!htmlString) return; 
 
@@ -166,9 +175,11 @@ export default function AgoraVadaPortal() {
       };
 
       const drawAllTexts = (ctx) => {
+        // Render Judul 
         const lh = ukuranFont * jarakBaris;
         renderRichText(ctx, judulHtml, teksX, teksY, 950, lh, ukuranFont);
 
+        // Render Sumber Berita
         if (sumberBerita) {
           ctx.fillStyle = '#FFFFFF';
           ctx.font = `${ukuranFontSumber}px PoppinsSemiBoldItalic, sans-serif`;
@@ -190,6 +201,7 @@ export default function AgoraVadaPortal() {
     }
   }, [currentPage, judulHtml, sumberBerita, imageUrl, imgX, imgY, imgScale, teksX, teksY, ukuranFont, jarakBaris, sumberX, sumberY, ukuranFontSumber]);
 
+  // DRAG GAMBAR HANDLERS
   const handleMouseDown = (e) => {
     setIsDragging(true);
     const clientX = e.clientX || (e.touches && e.touches[0].clientX);
@@ -251,21 +263,29 @@ export default function AgoraVadaPortal() {
                 style={{ width: '50%', backgroundColor: '#21262d', color: '#c9d1d9', padding: '12px', borderRadius: '10px', fontWeight: '600', fontSize: '13px', border: '1px solid #30363d', cursor: 'pointer' }}
                 onClick={async () => {
                   if (!urlBerita) return alert("Masukkan link dulu!");
+                  
+                  // SEKARANG FETCH MENGARAH KE API INTERNAL VERCEL
                   setPromptTeks("Menyedot data dari web, tunggu sebentar...");
                   try {
-                    // SEKARANG MENGARAH KE API INTERNAL NEXT.JS (VERCEL SERVERLESS)
-                    const res = await fetch("/api/tarik-berita", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ url: urlBerita }) });
+                    const res = await fetch("/api/tarik-berita", { 
+                      method: "POST", 
+                      headers: { "Content-Type": "application/json" }, 
+                      body: JSON.stringify({ url: urlBerita }) 
+                    });
+                    
                     const data = await res.json();
+                    
                     if(data.status === "success") {
                       setPromptTeks(data.prompt); 
                       setSumberBerita(data.sumber || (urlBerita ? `Sumber Berita: ${new URL(urlBerita).hostname}` : ''));
                       if(data.gambar_url) setImageUrl(data.gambar_url);
                       setCurrentPage(2);
                     } else {
-                      setPromptTeks("Gagal menyedot data: " + data.detail);
+                      alert("Gagal menyedot: " + data.detail);
+                      setPromptTeks("Gagal menyedot data otomatis. Silakan ketik manual.");
                     }
                   } catch(err) { 
-                    alert("Error pada server penyedot. Silakan lanjut manual ke Editor."); 
+                    alert("Gagal konek ke API Vercel. Pastikan folder app/api/tarik-berita/route.js sudah dibuat."); 
                   }
                 }}
               >Tarik Data 🔄</button>
@@ -306,7 +326,7 @@ export default function AgoraVadaPortal() {
             <div style={{ backgroundColor: '#0d1117', border: '1px solid #30363d', borderRadius: '12px', padding: '20px' }}>
               <div style={{ display: 'flex', gap: '24px', alignItems: 'flex-start', justifyContent: 'center', flexWrap: 'wrap' }}>
                 
-                {/* KANVAS KIRI */}
+                {/* KANVAS KIRI (BESERTA TULISAN RATA TENGAH TEPAT DI ATASNYA) */}
                 <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
                   <h2 style={{ fontSize: '14px', fontWeight: '700', marginBottom: '12px', color: '#8b949e', textAlign: 'center', letterSpacing: '1px' }}>
                     LIVE PREVIEW (1080 x 1350)
