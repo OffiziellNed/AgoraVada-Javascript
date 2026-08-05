@@ -18,8 +18,9 @@ export default function AgoraVadaPortal() {
   const [isDragging, setIsDragging] = useState(false);
   const [dragStart, setDragStart] = useState({ x: 0, y: 0 });
 
+  // Posisi default teks disesuaikan untuk kanvas 1080x1350
   const [teksX, setTeksX] = useState(540);
-  const [teksY, setTeksY] = useState(1000);
+  const [teksY, setTeksY] = useState(800); 
   const [ukuranFont, setUkuranFont] = useState(65);
   const [jarakBaris, setJarakBaris] = useState(1.4);
   const [alignTeks, setAlignTeks] = useState('Tengah');
@@ -31,7 +32,7 @@ export default function AgoraVadaPortal() {
     setImgY(0);
     setImgScale(1);
     setTeksX(540);
-    setTeksY(1000);
+    setTeksY(800);
     setUkuranFont(65);
     setJarakBaris(1.4);
   };
@@ -55,7 +56,7 @@ export default function AgoraVadaPortal() {
           ctx.restore();
         }
 
-        // 2. Gambar Template Agora Vada (Layer Atas dengan nama file asli ber-spasi)
+        // 2. Gambar Template Agora Vada
         const templateImg = new Image();
         templateImg.src = '/Agora Vada Template.png';
         
@@ -71,7 +72,7 @@ export default function AgoraVadaPortal() {
       };
 
       const drawTextAndLayers = (ctx) => {
-        // 3. Render Teks Judul (Hook)
+        // 3. Render Teks Judul
         ctx.fillStyle = '#FFFFFF';
         ctx.font = `${ukuranFont}px sans-serif`;
         ctx.textAlign = alignTeks === 'Tengah' ? 'center' : 'left';
@@ -100,11 +101,11 @@ export default function AgoraVadaPortal() {
           ctx.fillText(lines[k], teksX, currentY + (k * lineHeight));
         }
 
-        // 4. Render Sumber Berita
+        // 4. Render Sumber Berita (Dinaikkan posisinya jadi Y:1250 agar pas di kanvas 1350px)
         ctx.fillStyle = '#9CA3AF';
         ctx.font = '35px sans-serif';
         ctx.textAlign = 'center';
-        ctx.fillText(sumberBerita, 540, 1800);
+        ctx.fillText(sumberBerita, 540, 1250);
       };
 
       if (imageUrl) {
@@ -363,10 +364,11 @@ export default function AgoraVadaPortal() {
                   backgroundColor: '#0d1117', border: '2px dashed #30363d', borderRadius: '10px', padding: '4px', 
                   cursor: isDragging ? 'grabbing' : 'grab', overflow: 'hidden', display: 'flex', alignItems: 'center', justifyContent: 'center'
                 }}>
+                  {/* UKURAN CANVAS DIUBAH KE 1080x1350 */}
                   <canvas 
                     ref={canvasRef} 
                     width="1080" 
-                    height="1920" 
+                    height="1350" 
                     onMouseDown={handleMouseDown}
                     onMouseMove={handleMouseMove}
                     onMouseUp={handleMouseUp}
@@ -375,7 +377,7 @@ export default function AgoraVadaPortal() {
                     onTouchMove={handleMouseMove}
                     onTouchEnd={handleMouseUp}
                     onWheel={handleWheel}
-                    style={{ width: '220px', height: 'auto', borderRadius: '6px', display: 'block', touchAction: 'none' }}
+                    style={{ width: '240px', height: 'auto', borderRadius: '6px', display: 'block', touchAction: 'none' }}
                   ></canvas>
                 </div>
               </div>
@@ -385,7 +387,7 @@ export default function AgoraVadaPortal() {
             <div style={{ display: 'flex', gap: '8px', marginTop: '16px', borderTop: '1px solid #30363d', paddingTop: '12px' }}>
               <button 
                 style={{ width: '35%', backgroundColor: '#21262d', color: '#c9d1d9', padding: '10px', borderRadius: '8px', fontWeight: '600', fontSize: '12px', border: '1px solid #30363d', cursor: 'pointer' }}
-                onClick={() => setCurrentPage(1)}
+                onClick={() => setCurrentPage(2)}
               >
                 ⬅ Kembali
               </button>
