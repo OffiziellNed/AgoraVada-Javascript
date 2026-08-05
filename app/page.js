@@ -7,7 +7,7 @@ export default function AgoraVadaPortal() {
   const [urlBerita, setUrlBerita] = useState('');
   const [promptTeks, setPromptTeks] = useState('');
   
-  // State HTML Teks dibikin KOSONG (Sesuai request)
+  // State HTML Teks dibikin KOSONG 
   const [judulHtml, setJudulHtml] = useState('');
   const [sumberBerita, setSumberBerita] = useState('');
   const [imageUrl, setImageUrl] = useState(''); 
@@ -23,16 +23,16 @@ export default function AgoraVadaPortal() {
   const [isDragging, setIsDragging] = useState(false);
   const [dragStart, setDragStart] = useState({ x: 0, y: 0 });
 
-  // Standar Awal Judul Sesuai Gambar
-  const [teksX, setTeksX] = useState(110);
+  // Standar Awal Judul Sesuai Request Baru
+  const [teksX, setTeksX] = useState(140);
   const [teksY, setTeksY] = useState(800);
-  const [ukuranFont, setUkuranFont] = useState(75);
+  const [ukuranFont, setUkuranFont] = useState(79);
   const [jarakBaris, setJarakBaris] = useState(1.4);
 
-  // Standar Awal Sumber Berita Sesuai Gambar
+  // Standar Awal Sumber Berita Sesuai Request Baru
   const [sumberX, setSumberX] = useState(110);
   const [sumberY, setSumberY] = useState(710);
-  const [ukuranFontSumber, setUkuranFontSumber] = useState(30);
+  const [ukuranFontSumber, setUkuranFontSumber] = useState(28);
 
   const canvasRef = useRef(null);
 
@@ -60,9 +60,9 @@ export default function AgoraVadaPortal() {
     if (editor) setJudulHtml(editor.innerHTML);
   };
 
-  // MESIN RENDER RICH-TEXT (Membaca tag <font> dan <i>)
+  // MESIN RENDER RICH-TEXT 
   const renderRichText = (ctx, htmlString, x, y, maxWidth, lineHeight, baseFontSize) => {
-    if (!htmlString) return; // Kalau kosong gak usah dirender
+    if (!htmlString) return; 
 
     ctx.textAlign = 'left'; 
     ctx.textBaseline = 'top'; 
@@ -107,7 +107,6 @@ export default function AgoraVadaPortal() {
     let currentLine = [];
     let currentWidth = 0;
     
-    // Set font sementara untuk mengukur spasi
     ctx.font = `${baseFontSize}px PoppinsSemiBold, sans-serif`;
     const spaceWidth = ctx.measureText(' ').width;
 
@@ -176,7 +175,7 @@ export default function AgoraVadaPortal() {
       };
 
       const drawAllTexts = (ctx) => {
-        // Render Judul
+        // Render Judul 
         const lh = ukuranFont * jarakBaris;
         renderRichText(ctx, judulHtml, teksX, teksY, 950, lh, ukuranFont);
 
@@ -313,7 +312,7 @@ export default function AgoraVadaPortal() {
             <div style={{ backgroundColor: '#0d1117', border: '1px solid #30363d', borderRadius: '12px', padding: '20px' }}>
               <div style={{ display: 'flex', gap: '24px', alignItems: 'flex-start', justifyContent: 'center', flexWrap: 'wrap' }}>
                 
-                {/* KANVAS KIRI (BESERTA TULISAN RATA TENGAH TEPAT DI ATASNYA) */}
+                {/* KANVAS KIRI */}
                 <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
                   <h2 style={{ fontSize: '14px', fontWeight: '700', marginBottom: '12px', color: '#8b949e', textAlign: 'center', letterSpacing: '1px' }}>
                     LIVE PREVIEW (1080 x 1350)
@@ -328,7 +327,7 @@ export default function AgoraVadaPortal() {
                   </div>
                 </div>
 
-                {/* BOARD GAMBAR (DI SEBELAH KANAN PREVIEW) */}
+                {/* BOARD GAMBAR (KANAN) */}
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '16px', width: '280px', marginTop: '28px' }}>
                   <div style={{ backgroundColor: '#161b22', padding: '16px', borderRadius: '10px', border: '1px solid #30363d' }}>
                     <label style={{ fontSize: '11px', fontWeight: '700', color: '#3fb950', display: 'block', marginBottom: '8px' }}>🖼️ UPLOAD DARI PC/HP</label>
@@ -347,7 +346,7 @@ export default function AgoraVadaPortal() {
             {/* KONTROL BOARDS BAWAH */}
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '20px' }}>
               
-              {/* KOLOM KIRI: EDIT TEKS & SUMBER SERTA KONTROL SUMBER */}
+              {/* KOLOM KIRI */}
               <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
                 
                 {/* BOARD EDIT TEKS & WARNA */}
@@ -380,11 +379,11 @@ export default function AgoraVadaPortal() {
                   />
                 </div>
 
-                {/* BOARD KONTROL SUMBER BERITA (DI KIRI BAWAH) */}
+                {/* BOARD KONTROL SUMBER BERITA */}
                 <div style={{ backgroundColor: '#0d1117', padding: '12px 16px', borderRadius: '12px', border: '1px solid #30363d' }}>
                   <label style={{ fontSize: '11px', fontWeight: '700', color: '#f78166', display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px' }}>
                     <span>📍 KONTROL SUMBER BERITA</span>
-                    <button onClick={() => { setSumberX(110); setSumberY(710); setUkuranFontSumber(30); }} style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: '14px', padding: 0 }} title="Kembalikan ke Setelan Awal">🔄</button>
+                    <button onClick={() => { setSumberX(110); setSumberY(710); setUkuranFontSumber(28); }} style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: '14px', padding: 0 }} title="Kembalikan ke Setelan Awal">🔄</button>
                   </label>
                   <div style={{ display: 'grid', gridTemplateColumns: '1fr', gap: '8px' }}>
                     <div>
@@ -394,11 +393,11 @@ export default function AgoraVadaPortal() {
                     <div style={{ display: 'flex', gap: '8px' }}>
                       <div style={{ flex: 1 }}>
                         <span style={{ fontSize: '10px', color: '#8b949e', display: 'flex', justifyContent: 'space-between' }}><span>Geser X</span></span>
-                        <input type="range" min="0" max="1080" step="10" value={sumberX} onChange={(e) => setSumberX(parseInt(e.target.value))} style={{ width: '100%', accentColor: '#f78166' }} />
+                        <input type="range" min="0" max="1080" step="1" value={sumberX} onChange={(e) => setSumberX(parseInt(e.target.value))} style={{ width: '100%', accentColor: '#f78166' }} />
                       </div>
                       <div style={{ flex: 1 }}>
                         <span style={{ fontSize: '10px', color: '#8b949e', display: 'flex', justifyContent: 'space-between' }}><span>Geser Y</span></span>
-                        <input type="range" min="0" max="1350" step="10" value={sumberY} onChange={(e) => setSumberY(parseInt(e.target.value))} style={{ width: '100%', accentColor: '#f78166' }} />
+                        <input type="range" min="0" max="1350" step="1" value={sumberY} onChange={(e) => setSumberY(parseInt(e.target.value))} style={{ width: '100%', accentColor: '#f78166' }} />
                       </div>
                     </div>
                   </div>
@@ -406,7 +405,7 @@ export default function AgoraVadaPortal() {
 
               </div>
 
-              {/* KOLOM KANAN: BOARDS KONTROL POSISI & SKALA GAMBAR & JUDUL */}
+              {/* KOLOM KANAN */}
               <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
                 
                 {/* BOARD KONTROL GAMBAR */}
@@ -432,7 +431,7 @@ export default function AgoraVadaPortal() {
                 <div style={{ backgroundColor: '#0d1117', padding: '12px 16px', borderRadius: '12px', border: '1px solid #30363d' }}>
                   <label style={{ fontSize: '11px', fontWeight: '700', color: '#a371f7', display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px' }}>
                     <span>✨ KONTROL POSISI JUDUL</span>
-                    <button onClick={() => { setTeksX(110); setTeksY(800); setUkuranFont(75); setJarakBaris(1.4); }} style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: '14px', padding: 0 }} title="Kembalikan ke Setelan Awal">🔄</button>
+                    <button onClick={() => { setTeksX(140); setTeksY(800); setUkuranFont(79); setJarakBaris(1.4); }} style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: '14px', padding: 0 }} title="Kembalikan ke Setelan Awal">🔄</button>
                   </label>
                   <div style={{ display: 'grid', gridTemplateColumns: '1fr', gap: '8px' }}>
                     <div>
@@ -441,11 +440,11 @@ export default function AgoraVadaPortal() {
                     </div>
                     <div>
                       <span style={{ fontSize: '10px', color: '#8b949e', display: 'flex', justifyContent: 'space-between' }}><span>Geser X</span> <span>{teksX}</span></span>
-                      <input type="range" min="-500" max="1080" step="10" value={teksX} onChange={(e) => setTeksX(parseInt(e.target.value))} style={{ width: '100%', accentColor: '#a371f7' }} />
+                      <input type="range" min="-500" max="1080" step="1" value={teksX} onChange={(e) => setTeksX(parseInt(e.target.value))} style={{ width: '100%', accentColor: '#a371f7' }} />
                     </div>
                     <div>
                       <span style={{ fontSize: '10px', color: '#8b949e', display: 'flex', justifyContent: 'space-between' }}><span>Geser Y (Atas/Bawah)</span> <span>{teksY}</span></span>
-                      <input type="range" min="-500" max="2000" step="10" value={teksY} onChange={(e) => setTeksY(parseInt(e.target.value))} style={{ width: '100%', accentColor: '#a371f7' }} />
+                      <input type="range" min="-500" max="2000" step="1" value={teksY} onChange={(e) => setTeksY(parseInt(e.target.value))} style={{ width: '100%', accentColor: '#a371f7' }} />
                     </div>
                     <div style={{ marginTop: '4px', paddingTop: '8px', borderTop: '1px dashed #30363d' }}>
                       <span style={{ fontSize: '10px', color: '#8b949e', display: 'flex', justifyContent: 'space-between' }}><span>Jarak Antar Kalimat</span> <span>{jarakBaris}</span></span>
