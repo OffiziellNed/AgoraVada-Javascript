@@ -7,9 +7,9 @@ export default function AgoraVadaPortal() {
   const [urlBerita, setUrlBerita] = useState('');
   const [promptTeks, setPromptTeks] = useState('');
   
-  // State HTML Teks dengan default kuning untuk 3 baris awal (Sesuai contoh gambar)
-  const [judulHtml, setJudulHtml] = useState('<font color="#e7e820">Presiden BEM Unmul<br>Mendadak Mundur<br>Usai Sowan ke Jokowi,</font><br><font color="#ffffff">Ada Apa ya?</font>');
-  const [sumberBerita, setSumberBerita] = useState('Sumber Berita: regional.kompas.com');
+  // State HTML Teks dibikin KOSONG (Sesuai request)
+  const [judulHtml, setJudulHtml] = useState('');
+  const [sumberBerita, setSumberBerita] = useState('');
   const [imageUrl, setImageUrl] = useState(''); 
   const [customImgLink, setCustomImgLink] = useState('');
   
@@ -62,6 +62,8 @@ export default function AgoraVadaPortal() {
 
   // MESIN RENDER RICH-TEXT (Membaca tag <font> dan <i>)
   const renderRichText = (ctx, htmlString, x, y, maxWidth, lineHeight, baseFontSize) => {
+    if (!htmlString) return; // Kalau kosong gak usah dirender
+
     ctx.textAlign = 'left'; 
     ctx.textBaseline = 'top'; 
 
@@ -174,16 +176,18 @@ export default function AgoraVadaPortal() {
       };
 
       const drawAllTexts = (ctx) => {
-        // Render Judul (Selalu Rata Kiri)
+        // Render Judul
         const lh = ukuranFont * jarakBaris;
         renderRichText(ctx, judulHtml, teksX, teksY, 950, lh, ukuranFont);
 
-        // Render Sumber Berita (Otomatis Italic)
-        ctx.fillStyle = '#FFFFFF';
-        ctx.font = `${ukuranFontSumber}px PoppinsSemiBoldItalic, sans-serif`;
-        ctx.textAlign = 'left';
-        ctx.textBaseline = 'top';
-        ctx.fillText(sumberBerita, sumberX, sumberY);
+        // Render Sumber Berita
+        if (sumberBerita) {
+          ctx.fillStyle = '#FFFFFF';
+          ctx.font = `${ukuranFontSumber}px PoppinsSemiBoldItalic, sans-serif`;
+          ctx.textAlign = 'left';
+          ctx.textBaseline = 'top';
+          ctx.fillText(sumberBerita, sumberX, sumberY);
+        }
       };
 
       if (imageUrl) {
@@ -264,7 +268,8 @@ export default function AgoraVadaPortal() {
                     const res = await fetch("http://localhost:8000/tarik-berita", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ url: urlBerita }) });
                     const data = await res.json();
                     if(data.status === "success") {
-                      setPromptTeks(data.prompt); setSumberBerita(data.sumber || 'Sumber: news.com');
+                      setPromptTeks(data.prompt); 
+                      setSumberBerita(data.sumber || (urlBerita ? `Sumber Berita: ${new URL(urlBerita).hostname}` : ''));
                       if(data.gambar_url) setImageUrl(data.gambar_url);
                       setCurrentPage(2);
                     }
@@ -274,7 +279,10 @@ export default function AgoraVadaPortal() {
               <button 
                 style={{ width: '50%', backgroundColor: '#238636', color: '#ffffff', padding: '12px', borderRadius: '10px', fontWeight: '700', fontSize: '13px', border: 'none', cursor: 'pointer' }}
                 onClick={() => {
-                  if(urlBerita) { try { setSumberBerita(`Sumber: ${new URL(urlBerita).hostname}`); } catch(e) { setSumberBerita('Sumber: news.com'); } }
+                  if(urlBerita) { 
+                    try { setSumberBerita(`Sumber Berita: ${new URL(urlBerita).hostname}`); } 
+                    catch(e) { setSumberBerita(''); } 
+                  }
                   setCurrentPage(3);
                 }}
               >Langsung ke Editor ➔</button>
@@ -303,24 +311,25 @@ export default function AgoraVadaPortal() {
             
             {/* BAGIAN ATAS: LIVE PREVIEW & SUMBER GAMBAR KANAN */}
             <div style={{ backgroundColor: '#0d1117', border: '1px solid #30363d', borderRadius: '12px', padding: '20px' }}>
-              {/* TULISAN LIVE PREVIEW RATA KIRI TEPAT DI ATAS BOARD */}
-              <h2 style={{ fontSize: '14px', fontWeight: '700', marginBottom: '12px', color: '#8b949e', textAlign: 'left', letterSpacing: '1px' }}>
-                LIVE PREVIEW (1080 x 1350)
-              </h2>
               <div style={{ display: 'flex', gap: '24px', alignItems: 'flex-start', justifyContent: 'center', flexWrap: 'wrap' }}>
                 
-                {/* KANVAS KIRI */}
-                <div style={{ border: '2px dashed #30363d', borderRadius: '10px', padding: '8px', cursor: isDragging ? 'grabbing' : 'grab', backgroundColor: '#161b22' }}>
-                  <canvas 
-                    ref={canvasRef} width="1080" height="1350" 
-                    onMouseDown={handleMouseDown} onMouseMove={handleMouseMove} onMouseUp={handleMouseUp} onMouseLeave={handleMouseUp}
-                    onTouchStart={handleMouseDown} onTouchMove={handleMouseMove} onTouchEnd={handleMouseUp} onWheel={handleWheel}
-                    style={{ width: '280px', height: 'auto', borderRadius: '6px', display: 'block', touchAction: 'none' }}
-                  ></canvas>
+                {/* KANVAS KIRI (BESERTA TULISAN RATA TENGAH TEPAT DI ATASNYA) */}
+                <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
+                  <h2 style={{ fontSize: '14px', fontWeight: '700', marginBottom: '12px', color: '#8b949e', textAlign: 'center', letterSpacing: '1px' }}>
+                    LIVE PREVIEW (1080 x 1350)
+                  </h2>
+                  <div style={{ border: '2px dashed #30363d', borderRadius: '10px', padding: '8px', cursor: isDragging ? 'grabbing' : 'grab', backgroundColor: '#161b22' }}>
+                    <canvas 
+                      ref={canvasRef} width="1080" height="1350" 
+                      onMouseDown={handleMouseDown} onMouseMove={handleMouseMove} onMouseUp={handleMouseUp} onMouseLeave={handleMouseUp}
+                      onTouchStart={handleMouseDown} onTouchMove={handleMouseMove} onTouchEnd={handleMouseUp} onWheel={handleWheel}
+                      style={{ width: '280px', height: 'auto', borderRadius: '6px', display: 'block', touchAction: 'none' }}
+                    ></canvas>
+                  </div>
                 </div>
 
                 {/* BOARD GAMBAR (DI SEBELAH KANAN PREVIEW) */}
-                <div style={{ display: 'flex', flexDirection: 'column', gap: '16px', width: '280px' }}>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '16px', width: '280px', marginTop: '28px' }}>
                   <div style={{ backgroundColor: '#161b22', padding: '16px', borderRadius: '10px', border: '1px solid #30363d' }}>
                     <label style={{ fontSize: '11px', fontWeight: '700', color: '#3fb950', display: 'block', marginBottom: '8px' }}>🖼️ UPLOAD DARI PC/HP</label>
                     <input type="file" accept="image/*" onChange={handleUploadFoto} style={{ fontSize: '11px', color: '#c9d1d9', width: '100%' }} />
@@ -356,7 +365,6 @@ export default function AgoraVadaPortal() {
                     id="judul-editor"
                     contentEditable
                     onInput={(e) => setJudulHtml(e.currentTarget.innerHTML)}
-                    ref={(el) => { if (el && el.innerHTML === '') el.innerHTML = judulHtml; }}
                     style={{ width: '100%', backgroundColor: '#161b22', border: '1px solid #30363d', color: '#ffffff', padding: '12px', borderRadius: '8px', fontSize: '14px', minHeight: '110px', outline: 'none', boxSizing: 'border-box', overflowY: 'auto', lineHeight: '1.5' }}
                   />
                 </div>
@@ -372,7 +380,7 @@ export default function AgoraVadaPortal() {
                   />
                 </div>
 
-                {/* BOARD KONTROL SUMBER BERITA (DIPINDAHKAN KE KIRI BAWAH) */}
+                {/* BOARD KONTROL SUMBER BERITA (DI KIRI BAWAH) */}
                 <div style={{ backgroundColor: '#0d1117', padding: '12px 16px', borderRadius: '12px', border: '1px solid #30363d' }}>
                   <label style={{ fontSize: '11px', fontWeight: '700', color: '#f78166', display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px' }}>
                     <span>📍 KONTROL SUMBER BERITA</span>
@@ -420,7 +428,7 @@ export default function AgoraVadaPortal() {
                   </div>
                 </div>
 
-                {/* BOARD KONTROL TEKS JUDUL (ADA IKON REFRESH & JARAK BARIS) */}
+                {/* BOARD KONTROL TEKS JUDUL */}
                 <div style={{ backgroundColor: '#0d1117', padding: '12px 16px', borderRadius: '12px', border: '1px solid #30363d' }}>
                   <label style={{ fontSize: '11px', fontWeight: '700', color: '#a371f7', display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px' }}>
                     <span>✨ KONTROL POSISI JUDUL</span>
