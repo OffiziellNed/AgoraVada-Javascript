@@ -7,7 +7,7 @@ export default function AgoraVadaPortal() {
   const [urlBerita, setUrlBerita] = useState('');
   const [promptTeks, setPromptTeks] = useState('');
   
-  // State HTML Teks dibikin KOSONG 
+  // State HTML Teks KOSONG
   const [judulHtml, setJudulHtml] = useState('');
   const [sumberBerita, setSumberBerita] = useState('');
   const [imageUrl, setImageUrl] = useState(''); 
@@ -23,13 +23,13 @@ export default function AgoraVadaPortal() {
   const [isDragging, setIsDragging] = useState(false);
   const [dragStart, setDragStart] = useState({ x: 0, y: 0 });
 
-  // Standar Awal Judul Sesuai Request Baru
+  // Standar Awal Judul 
   const [teksX, setTeksX] = useState(140);
   const [teksY, setTeksY] = useState(800);
   const [ukuranFont, setUkuranFont] = useState(79);
   const [jarakBaris, setJarakBaris] = useState(1.4);
 
-  // Standar Awal Sumber Berita Sesuai Request Baru
+  // Standar Awal Sumber Berita 
   const [sumberX, setSumberX] = useState(110);
   const [sumberY, setSumberY] = useState(710);
   const [ukuranFontSumber, setUkuranFontSumber] = useState(28);
@@ -351,13 +351,13 @@ export default function AgoraVadaPortal() {
                 
                 {/* BOARD EDIT TEKS & WARNA */}
                 <div style={{ backgroundColor: '#0d1117', padding: '16px', borderRadius: '12px', border: '1px solid #30363d' }}>
-                  <label style={{ fontSize: '11px', fontWeight: '700', color: '#a371f7', display: 'block', marginBottom: '10px', letterSpacing: '1px' }}>📝 EDIT JUDUL (BLOK TEKS & KLIK FORMAT)</label>
+                  <label style={{ fontSize: '11px', fontWeight: '700', color: '#a371f7', display: 'block', marginBottom: '10px', letterSpacing: '1px' }}>📝 EDIT JUDUL</label>
                   
                   <div style={{ display: 'flex', gap: '8px', marginBottom: '10px', alignItems: 'center' }}>
                     <button onClick={() => handleFormat('foreColor', '#E7E820')} style={{ backgroundColor: '#E7E820', color: '#000', padding: '6px 12px', borderRadius: '6px', fontSize: '11px', fontWeight: 'bold', cursor: 'pointer', border: 'none' }}>Kuning</button>
                     <button onClick={() => handleFormat('italic')} style={{ backgroundColor: '#21262d', color: '#fff', padding: '6px 14px', borderRadius: '6px', fontSize: '12px', fontWeight: 'bold', fontStyle: 'italic', cursor: 'pointer', border: '1px solid #30363d' }}>I</button>
                     <div style={{ width: '1px', height: '16px', backgroundColor: '#30363d', margin: '0 4px' }}></div>
-                    <button onClick={() => { handleFormat('foreColor', '#ffffff'); handleFormat('italic', false); }} style={{ backgroundColor: 'transparent', color: '#c9d1d9', padding: '6px 10px', borderRadius: '6px', fontSize: '10px', cursor: 'pointer', border: '1px solid #30363d' }}>Teks Dasar</button>
+                    <button onClick={() => handleFormat('foreColor', '#ffffff')} style={{ backgroundColor: 'transparent', color: '#c9d1d9', padding: '6px 10px', borderRadius: '6px', fontSize: '10px', cursor: 'pointer', border: '1px solid #30363d' }}>Teks Dasar</button>
                   </div>
 
                   <div 
@@ -392,11 +392,11 @@ export default function AgoraVadaPortal() {
                     </div>
                     <div style={{ display: 'flex', gap: '8px' }}>
                       <div style={{ flex: 1 }}>
-                        <span style={{ fontSize: '10px', color: '#8b949e', display: 'flex', justifyContent: 'space-between' }}><span>Geser X</span></span>
+                        <span style={{ fontSize: '10px', color: '#8b949e', display: 'flex', justifyContent: 'space-between' }}><span>Geser X</span> <span>{sumberX}</span></span>
                         <input type="range" min="0" max="1080" step="1" value={sumberX} onChange={(e) => setSumberX(parseInt(e.target.value))} style={{ width: '100%', accentColor: '#f78166' }} />
                       </div>
                       <div style={{ flex: 1 }}>
-                        <span style={{ fontSize: '10px', color: '#8b949e', display: 'flex', justifyContent: 'space-between' }}><span>Geser Y</span></span>
+                        <span style={{ fontSize: '10px', color: '#8b949e', display: 'flex', justifyContent: 'space-between' }}><span>Geser Y</span> <span>{sumberY}</span></span>
                         <input type="range" min="0" max="1350" step="1" value={sumberY} onChange={(e) => setSumberY(parseInt(e.target.value))} style={{ width: '100%', accentColor: '#f78166' }} />
                       </div>
                     </div>
