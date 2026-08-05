@@ -7,18 +7,12 @@ export default function AgoraVadaPortal() {
   const [urlBerita, setUrlBerita] = useState('');
   const [promptTeks, setPromptTeks] = useState('');
   
-  // State HTML Teks KOSONG
   const [judulHtml, setJudulHtml] = useState('');
   const [sumberBerita, setSumberBerita] = useState('');
   const [imageUrl, setImageUrl] = useState(''); 
   const [customImgLink, setCustomImgLink] = useState('');
   
-  // State untuk tombol Copy
   const [isCopied, setIsCopied] = useState(false);
-  
-  // ==========================================
-  // STATE POSISI & UKURAN (KALIBRASI SESUAI GAMBAR)
-  // ==========================================
   
   const [imgX, setImgX] = useState(0);
   const [imgY, setImgY] = useState(0);
@@ -26,19 +20,22 @@ export default function AgoraVadaPortal() {
   const [isDragging, setIsDragging] = useState(false);
   const [dragStart, setDragStart] = useState({ x: 0, y: 0 });
 
-  // Standar Awal Judul 
   const [teksX, setTeksX] = useState(140);
   const [teksY, setTeksY] = useState(800);
   const [ukuranFont, setUkuranFont] = useState(79);
   const [jarakBaris, setJarakBaris] = useState(1.4);
 
-  // Standar Awal Sumber Berita 
   const [sumberX, setSumberX] = useState(142); 
   const [sumberY, setSumberY] = useState(710);
   const [ukuranFontSumber, setUkuranFontSumber] = useState(28);
 
   const canvasRef = useRef(null);
 
+  // CACHE MEMORY UNTUK GAMBAR (Biar gak ngelag & blank pas digeser)
+  const [loadedBgImg, setLoadedBgImg] = useState(null);
+  const [templateImgObj, setTemplateImgObj] = useState(null);
+
+  // 1. INIT: Load Font & Template di awal
   useEffect(() => {
     const loadFonts = async () => {
       try {
@@ -50,23 +47,82 @@ export default function AgoraVadaPortal() {
         await fontSBI.load();
         document.fonts.add(fontSBI);
       } catch (err) {
-        console.warn("Font Poppins gagal di-load. Pastikan file ada di folder public.", err);
+        console.warn("Font Poppins gagal di-load. Pastikan file ada di folder public.");
       }
     };
     loadFonts();
+
+    // Cache Template Image
+    const tImg = new Image();
+    tImg.src = '/Agora Vada Template.png';
+    tImg.onload = () => setTemplateImgObj(tImg);
   }, []);
 
-  // FUNGSI FORMATTING EDITOR
+  // 2. MESIN PENYEDOT GAMBAR (3-Lapis Proxy System)
+  useEffect(() => {
+    if (!imageUrl) {
+      setLoadedBgImg(null);
+      return;
+    }
+
+    let isCancelled = false;
+
+    const fetchImageSafely = async () => {
+      const tryLoad = (url) => new Promise((resolve, reject) => {
+        const img = new Image();
+        img.crossOrigin = 'anonymous';
+        img.onload = () => resolve(img);
+        img.onerror = () => reject();
+        img.src = url;
+      });
+
+      // Kalau gambar dari PC Lokal (blob), langsung load tanpa proxy
+      if (!imageUrl.startsWith('http')) {
+        try { 
+          const img = await tryLoad(imageUrl); 
+          if (!isCancelled) setLoadedBgImg(img); 
+        } catch(e) {}
+        return;
+      }
+
+      // 3 Lapis Proxy untuk menjebol blokir website berita (CORS)
+      const proxies = [
+        `https://api.allorigins.win/raw?url=${encodeURIComponent(imageUrl)}`,
+        `https://wsrv.nl/?url=${encodeURIComponent(imageUrl)}`,
+        `https://corsproxy.io/?${encodeURIComponent(imageUrl)}`,
+        imageUrl // Last resort (tanpa proxy)
+      ];
+
+      for (let proxy of proxies) {
+        try {
+          const img = await tryLoad(proxy);
+          if (!isCancelled) setLoadedBgImg(img);
+          return; // Berhenti kalau 1 proxy sukses
+        } catch(e) {
+          continue; // Coba proxy selanjutnya kalau gagal
+        }
+      }
+
+      // Kalau ke-3 proxy gagal (Proteksi anti-bot sangat kuat)
+      if (!isCancelled) {
+        setLoadedBgImg(null);
+        alert("Server website memblokir akses gambar ini. Silakan download gambarnya secara manual, lalu gunakan menu 'UPLOAD DARI PC/HP'.");
+      }
+    };
+
+    fetchImageSafely();
+
+    return () => { isCancelled = true; };
+  }, [imageUrl]);
+
   const handleFormat = (command, value = null) => {
     document.execCommand(command, false, value);
     const editor = document.getElementById('judul-editor');
     if (editor) setJudulHtml(editor.innerHTML);
   };
 
-  // MESIN RENDER RICH-TEXT 
   const renderRichText = (ctx, htmlString, x, y, maxWidth, lineHeight, baseFontSize) => {
     if (!htmlString) return; 
-
     ctx.textAlign = 'left'; 
     ctx.textBaseline = 'top'; 
 
@@ -80,7 +136,6 @@ export default function AgoraVadaPortal() {
     tempDiv.innerHTML = cleanHTML;
     
     let wordsWithContext = [];
-    
     const extract = (node, currentContext) => {
       if (node.nodeType === Node.TEXT_NODE) {
         let text = node.textContent;
@@ -149,69 +204,45 @@ export default function AgoraVadaPortal() {
     });
   };
 
+  // 3. MESIN RENDER KANVAS (Sinkron, Cepat, Tanpa Kedip)
   useEffect(() => {
-    if (currentPage === 3) {
-      const canvas = canvasRef.current;
-      if (!canvas) return;
-      const ctx = canvas.getContext('2d');
+    if (currentPage !== 3) return;
+    const canvas = canvasRef.current;
+    if (!canvas) return;
+    const ctx = canvas.getContext('2d');
 
-      ctx.fillStyle = '#111827';
-      ctx.fillRect(0, 0, canvas.width, canvas.height);
+    // Gambar BG Hitam
+    ctx.fillStyle = '#111827';
+    ctx.fillRect(0, 0, canvas.width, canvas.height);
 
-      const renderFinalCanvas = (bgImg) => {
-        if (bgImg) {
-          ctx.save();
-          const drawW = bgImg.width * imgScale;
-          const drawH = bgImg.height * imgScale;
-          ctx.drawImage(bgImg, imgX, imgY, drawW, drawH);
-          ctx.restore();
-        }
-
-        const templateImg = new Image();
-        templateImg.src = '/Agora Vada Template.png';
-        
-        templateImg.onload = () => {
-          ctx.drawImage(templateImg, 0, 0, canvas.width, canvas.height);
-          drawAllTexts(ctx);
-        };
-        templateImg.onerror = () => drawAllTexts(ctx);
-      };
-
-      const drawAllTexts = (ctx) => {
-        const lh = ukuranFont * jarakBaris;
-        renderRichText(ctx, judulHtml, teksX, teksY, 950, lh, ukuranFont);
-
-        if (sumberBerita) {
-          ctx.fillStyle = '#FFFFFF';
-          ctx.font = `${ukuranFontSumber}px PoppinsSemiBoldItalic, sans-serif`;
-          ctx.textAlign = 'left';
-          ctx.textBaseline = 'top';
-          ctx.fillText(sumberBerita, sumberX, sumberY);
-        }
-      };
-
-      if (imageUrl) {
-        const userImg = new Image();
-        userImg.crossOrigin = 'anonymous'; // Wajib untuk menghindari error Canvas Tainted
-        
-        // SYSTEM PROXY: Memanipulasi URL agar tidak diblokir oleh sistem keamanan CORS browser
-        let finalImageUrl = imageUrl;
-        if (imageUrl.startsWith('http')) {
-          // Kita lewatkan link gambarnya via weserv proxy supaya diizinkan masuk ke dalam Kanvas
-          finalImageUrl = `https://wsrv.nl/?url=${encodeURIComponent(imageUrl)}&output=webp`;
-        }
-
-        userImg.src = finalImageUrl;
-        userImg.onload = () => renderFinalCanvas(userImg);
-        userImg.onerror = () => {
-          console.warn("Gambar gagal dimuat (Link mati atau diblokir anti-bot kuat).");
-          renderFinalCanvas(null);
-        };
-      } else {
-        renderFinalCanvas(null);
-      }
+    // Gambar Foto Berita (yang sudah ter-cache)
+    if (loadedBgImg) {
+      ctx.save();
+      const drawW = loadedBgImg.width * imgScale;
+      const drawH = loadedBgImg.height * imgScale;
+      ctx.drawImage(loadedBgImg, imgX, imgY, drawW, drawH);
+      ctx.restore();
     }
-  }, [currentPage, judulHtml, sumberBerita, imageUrl, imgX, imgY, imgScale, teksX, teksY, ukuranFont, jarakBaris, sumberX, sumberY, ukuranFontSumber]);
+
+    // Gambar Template Agora Vada
+    if (templateImgObj) {
+      ctx.drawImage(templateImgObj, 0, 0, canvas.width, canvas.height);
+    }
+
+    // Gambar Teks
+    const lh = ukuranFont * jarakBaris;
+    renderRichText(ctx, judulHtml, teksX, teksY, 950, lh, ukuranFont);
+
+    if (sumberBerita) {
+      ctx.fillStyle = '#FFFFFF';
+      ctx.font = `${ukuranFontSumber}px PoppinsSemiBoldItalic, sans-serif`;
+      ctx.textAlign = 'left';
+      ctx.textBaseline = 'top';
+      ctx.fillText(sumberBerita, sumberX, sumberY);
+    }
+
+  }, [currentPage, loadedBgImg, templateImgObj, imgX, imgY, imgScale, teksX, teksY, ukuranFont, jarakBaris, sumberX, sumberY, ukuranFontSumber, judulHtml, sumberBerita]);
+
 
   const handleMouseDown = (e) => {
     setIsDragging(true);
@@ -298,10 +329,7 @@ export default function AgoraVadaPortal() {
                       
                       setPromptTeks(promptSakti); 
                       setSumberBerita(data.sumber || (urlBerita ? `Sumber Berita: ${new URL(urlBerita).hostname}` : ''));
-                      
-                      // Mengirim link gambar hasil scraping untuk dirender
                       if(data.gambar_url) setImageUrl(data.gambar_url);
-                      
                       setCurrentPage(2);
                     } else {
                       alert("Gagal menyedot: " + data.detail);
@@ -394,14 +422,7 @@ export default function AgoraVadaPortal() {
                   <div style={{ backgroundColor: '#161b22', padding: '16px', borderRadius: '10px', border: '1px solid #30363d' }}>
                     <label style={{ fontSize: '11px', fontWeight: '700', color: '#58a6ff', display: 'block', marginBottom: '8px' }}>🌐 AMBIL DARI LINK</label>
                     <input type="text" placeholder="https://domain.com/foto.jpg" style={{ width: '100%', padding: '10px', borderRadius: '6px', backgroundColor: '#0d1117', color: '#fff', border: '1px solid #30363d', fontSize: '12px', marginBottom: '10px', boxSizing: 'border-box' }} value={customImgLink} onChange={(e) => setCustomImgLink(e.target.value)} />
-                    
-                    {/* TOMBOL SEDOT GAMBAR */}
-                    <button 
-                      style={{ width: '100%', backgroundColor: '#1f6feb', color: '#fff', padding: '10px', borderRadius: '6px', fontWeight: 'bold', fontSize: '12px', border: 'none', cursor: 'pointer' }} 
-                      onClick={() => {
-                        if (customImgLink) setImageUrl(customImgLink);
-                      }}
-                    >Sedot Gambar ⬇</button>
+                    <button style={{ width: '100%', backgroundColor: '#1f6feb', color: '#fff', padding: '10px', borderRadius: '6px', fontWeight: 'bold', fontSize: '12px', border: 'none', cursor: 'pointer' }} onClick={() => { if (customImgLink) setImageUrl(customImgLink); }}>Sedot Gambar ⬇</button>
                   </div>
                 </div>
 
