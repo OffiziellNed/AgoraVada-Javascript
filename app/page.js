@@ -13,6 +13,9 @@ export default function AgoraVadaPortal() {
   const [imageUrl, setImageUrl] = useState(''); 
   const [customImgLink, setCustomImgLink] = useState('');
   
+  // State untuk tombol Copy
+  const [isCopied, setIsCopied] = useState(false);
+  
   // ==========================================
   // STATE POSISI & UKURAN (KALIBRASI SESUAI GAMBAR)
   // ==========================================
@@ -175,11 +178,9 @@ export default function AgoraVadaPortal() {
       };
 
       const drawAllTexts = (ctx) => {
-        // Render Judul 
         const lh = ukuranFont * jarakBaris;
         renderRichText(ctx, judulHtml, teksX, teksY, 950, lh, ukuranFont);
 
-        // Render Sumber Berita
         if (sumberBerita) {
           ctx.fillStyle = '#FFFFFF';
           ctx.font = `${ukuranFontSumber}px PoppinsSemiBoldItalic, sans-serif`;
@@ -201,7 +202,6 @@ export default function AgoraVadaPortal() {
     }
   }, [currentPage, judulHtml, sumberBerita, imageUrl, imgX, imgY, imgScale, teksX, teksY, ukuranFont, jarakBaris, sumberX, sumberY, ukuranFontSumber]);
 
-  // DRAG GAMBAR HANDLERS
   const handleMouseDown = (e) => {
     setIsDragging(true);
     const clientX = e.clientX || (e.touches && e.touches[0].clientX);
@@ -238,6 +238,14 @@ export default function AgoraVadaPortal() {
     }
   };
 
+  const handleCopyPrompt = () => {
+    navigator.clipboard.writeText(promptTeks);
+    setIsCopied(true);
+    setTimeout(() => {
+      setIsCopied(false);
+    }, 2000); // Tulisan kembali setelah 2 detik
+  };
+
   return (
     <div style={{ width: '100%', maxWidth: currentPage === 3 ? '950px' : '480px', margin: '0 auto', padding: '20px', transition: 'max-width 0.3s ease' }}>
       
@@ -264,7 +272,6 @@ export default function AgoraVadaPortal() {
                 onClick={async () => {
                   if (!urlBerita) return alert("Masukkan link dulu!");
                   
-                  // SEKARANG FETCH MENGARAH KE API INTERNAL VERCEL
                   setPromptTeks("Menyedot data dari web, tunggu sebentar...");
                   try {
                     const res = await fetch("/api/tarik-berita", { 
@@ -276,7 +283,10 @@ export default function AgoraVadaPortal() {
                     const data = await res.json();
                     
                     if(data.status === "success") {
-                      setPromptTeks(data.prompt); 
+                      // TEXT PROMPT OTOMATIS DISUNTIK DI SINI
+                      const promptSakti = `Tolong buat 10 judul berita menggunakan hook dan copywriter handal untuk media alternatif "AgoraVada", serta buatkan caption untuk instagram, normatif saja dan informatif. Pastikan diakhiri oleh sumber berita dan 3 hastag (wajib ada #AgoraVada sisanya disesuaikan dengan kata kunci subjek dan topik yang dibahas).\n\n${data.prompt}`;
+                      
+                      setPromptTeks(promptSakti); 
                       setSumberBerita(data.sumber || (urlBerita ? `Sumber Berita: ${new URL(urlBerita).hostname}` : ''));
                       if(data.gambar_url) setImageUrl(data.gambar_url);
                       setCurrentPage(2);
@@ -306,9 +316,30 @@ export default function AgoraVadaPortal() {
         {/* ================= PAGE 2 ================= */}
         {currentPage === 2 && (
           <div>
-            <h2 style={{ fontSize: '15px', fontWeight: '700', marginBottom: '16px', color: '#c9d1d9', borderBottom: '1px solid #30363d', paddingBottom: '8px' }}>2. Prompt Manual & Edit Teks</h2>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px', borderBottom: '1px solid #30363d', paddingBottom: '8px' }}>
+              <h2 style={{ fontSize: '15px', fontWeight: '700', color: '#c9d1d9', margin: 0 }}>2. Prompt Manual & Edit Teks</h2>
+              <button 
+                onClick={handleCopyPrompt}
+                style={{ 
+                  backgroundColor: isCopied ? '#238636' : '#21262d', 
+                  color: '#ffffff', 
+                  padding: '6px 12px', 
+                  borderRadius: '6px', 
+                  fontSize: '11px', 
+                  fontWeight: '600', 
+                  border: isCopied ? '1px solid #2ea043' : '1px solid #30363d', 
+                  cursor: 'pointer', 
+                  display: 'flex', 
+                  alignItems: 'center',
+                  transition: 'all 0.2s ease'
+                }}
+              >
+                {isCopied ? "✅ Tersalin!" : "📋 Copy Prompt"}
+              </button>
+            </div>
+            
             <textarea 
-              style={{ width: '100%', backgroundColor: '#0d1117', border: '1px solid #30363d', color: '#e6edf3', padding: '12px', borderRadius: '10px', fontSize: '13px', minHeight: '220px', outline: 'none', marginBottom: '12px', boxSizing: 'border-box', resize: 'vertical' }}
+              style={{ width: '100%', backgroundColor: '#0d1117', border: '1px solid #30363d', color: '#e6edf3', padding: '12px', borderRadius: '10px', fontSize: '13px', minHeight: '280px', outline: 'none', marginBottom: '12px', boxSizing: 'border-box', resize: 'vertical' }}
               value={promptTeks} onChange={(e) => setPromptTeks(e.target.value)}
             />
             <div style={{ display: 'flex', gap: '10px' }}>
