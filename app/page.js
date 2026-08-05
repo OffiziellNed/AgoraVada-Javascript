@@ -192,10 +192,21 @@ export default function AgoraVadaPortal() {
 
       if (imageUrl) {
         const userImg = new Image();
-        userImg.crossOrigin = 'anonymous';
-        userImg.src = imageUrl;
+        userImg.crossOrigin = 'anonymous'; // Wajib untuk menghindari error Canvas Tainted
+        
+        // SYSTEM PROXY: Memanipulasi URL agar tidak diblokir oleh sistem keamanan CORS browser
+        let finalImageUrl = imageUrl;
+        if (imageUrl.startsWith('http')) {
+          // Kita lewatkan link gambarnya via weserv proxy supaya diizinkan masuk ke dalam Kanvas
+          finalImageUrl = `https://wsrv.nl/?url=${encodeURIComponent(imageUrl)}&output=webp`;
+        }
+
+        userImg.src = finalImageUrl;
         userImg.onload = () => renderFinalCanvas(userImg);
-        userImg.onerror = () => renderFinalCanvas(null);
+        userImg.onerror = () => {
+          console.warn("Gambar gagal dimuat (Link mati atau diblokir anti-bot kuat).");
+          renderFinalCanvas(null);
+        };
       } else {
         renderFinalCanvas(null);
       }
@@ -243,7 +254,7 @@ export default function AgoraVadaPortal() {
     setIsCopied(true);
     setTimeout(() => {
       setIsCopied(false);
-    }, 2000); // Tulisan kembali setelah 2 detik
+    }, 2000); 
   };
 
   return (
@@ -283,12 +294,14 @@ export default function AgoraVadaPortal() {
                     const data = await res.json();
                     
                     if(data.status === "success") {
-                      // TEXT PROMPT OTOMATIS DISUNTIK DI SINI
                       const promptSakti = `Tolong buat 10 judul berita menggunakan hook dan copywriter handal untuk media alternatif "AgoraVada", serta buatkan caption untuk instagram, normatif saja dan informatif. Pastikan diakhiri oleh sumber berita dan 3 hastag (wajib ada #AgoraVada sisanya disesuaikan dengan kata kunci subjek dan topik yang dibahas).\n\n${data.prompt}`;
                       
                       setPromptTeks(promptSakti); 
                       setSumberBerita(data.sumber || (urlBerita ? `Sumber Berita: ${new URL(urlBerita).hostname}` : ''));
+                      
+                      // Mengirim link gambar hasil scraping untuk dirender
                       if(data.gambar_url) setImageUrl(data.gambar_url);
+                      
                       setCurrentPage(2);
                     } else {
                       alert("Gagal menyedot: " + data.detail);
@@ -357,7 +370,7 @@ export default function AgoraVadaPortal() {
             <div style={{ backgroundColor: '#0d1117', border: '1px solid #30363d', borderRadius: '12px', padding: '20px' }}>
               <div style={{ display: 'flex', gap: '24px', alignItems: 'flex-start', justifyContent: 'center', flexWrap: 'wrap' }}>
                 
-                {/* KANVAS KIRI (BESERTA TULISAN RATA TENGAH TEPAT DI ATASNYA) */}
+                {/* KANVAS KIRI */}
                 <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
                   <h2 style={{ fontSize: '14px', fontWeight: '700', marginBottom: '12px', color: '#8b949e', textAlign: 'center', letterSpacing: '1px' }}>
                     LIVE PREVIEW (1080 x 1350)
@@ -381,7 +394,14 @@ export default function AgoraVadaPortal() {
                   <div style={{ backgroundColor: '#161b22', padding: '16px', borderRadius: '10px', border: '1px solid #30363d' }}>
                     <label style={{ fontSize: '11px', fontWeight: '700', color: '#58a6ff', display: 'block', marginBottom: '8px' }}>🌐 AMBIL DARI LINK</label>
                     <input type="text" placeholder="https://domain.com/foto.jpg" style={{ width: '100%', padding: '10px', borderRadius: '6px', backgroundColor: '#0d1117', color: '#fff', border: '1px solid #30363d', fontSize: '12px', marginBottom: '10px', boxSizing: 'border-box' }} value={customImgLink} onChange={(e) => setCustomImgLink(e.target.value)} />
-                    <button style={{ width: '100%', backgroundColor: '#1f6feb', color: '#fff', padding: '10px', borderRadius: '6px', fontWeight: 'bold', fontSize: '12px', border: 'none', cursor: 'pointer' }} onClick={() => setImageUrl(customImgLink)}>Sedot Gambar ⬇</button>
+                    
+                    {/* TOMBOL SEDOT GAMBAR */}
+                    <button 
+                      style={{ width: '100%', backgroundColor: '#1f6feb', color: '#fff', padding: '10px', borderRadius: '6px', fontWeight: 'bold', fontSize: '12px', border: 'none', cursor: 'pointer' }} 
+                      onClick={() => {
+                        if (customImgLink) setImageUrl(customImgLink);
+                      }}
+                    >Sedot Gambar ⬇</button>
                   </div>
                 </div>
 
