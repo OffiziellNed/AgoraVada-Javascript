@@ -17,6 +17,7 @@ export async function POST(request) {
     while (currentUrl && pageCount <= maxPages && !visitedUrls.has(currentUrl)) {
       visitedUrls.add(currentUrl);
       
+      // Menyamar sebagai browser Chrome agar tidak diblokir web berita
       const response = await fetch(currentUrl, {
         headers: {
           'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/114.0.0.0 Safari/537.36'
@@ -83,8 +84,8 @@ export async function POST(request) {
     // 5. Merapikan spasi yang berlebihan
     fullContent = fullContent.replace(/\n\s*\n/g, '\n\n').trim();
 
-    // Template untuk dimasukkan ke Textarea Page 2 (Limit saya naikkan ke 4000 agar muat lebih banyak)
-    const promptTeks = `[JUDUL BERITA]\n${title}\n\n[ISI BERITA]\n${fullContent.substring(0, 4000)}...`;
+    // Template untuk dimasukkan ke Textarea Page 2 (Teks disedot 100% tanpa dipotong substring)
+    const promptTeks = `[JUDUL BERITA]\n${title}\n\n[ISI BERITA]\n${fullContent}`;
     
     return NextResponse.json({
       status: "success",
