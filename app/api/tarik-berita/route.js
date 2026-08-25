@@ -9,8 +9,21 @@ export async function POST(req) {
       return NextResponse.json({ error: 'URL kosong', message: 'URL tidak boleh kosong' }, { status: 400 });
     }
 
-    // TRIK GOOGLEBOT: Menyamar sebagai mesin pencari Google agar masuk whitelist WAF
-    const response = await fetch(url.trim(), {
+    let fetchUrl = url.trim();
+    
+    // Trik Khusus Media Indonesia: Paksa tampilkan semua halaman (page=all / single=1)
+    if (fetchUrl.includes('kompas.com') || fetchUrl.includes('tribunnews.com')) {
+      if (!fetchUrl.includes('page=all')) {
+        fetchUrl += fetchUrl.includes('?') ? '&page=all' : '?page=all';
+      }
+    } else if (fetchUrl.includes('detik.com')) {
+      if (!fetchUrl.includes('single=1')) {
+        fetchUrl += fetchUrl.includes('?') ? '&single=1' : '?single=1';
+      }
+    }
+
+    // Menyamar sebagai Googlebot
+    const response = await fetch(fetchUrl, {
       method: 'GET',
       headers: {
         'User-Agent': 'Mozilla/5.0 (compatible; Googlebot/2.1; +http://www.google.com/bot.html)',
@@ -22,25 +35,63 @@ export async function POST(req) {
 
     const html = await response.text();
 
-    // Cek kalau ternyata Googlebot juga ikut dicegat pakai halaman Cloudflare
-    if (html.includes("Just a moment...") || html.includes("Cloudflare") || html.includes("Attention Required!")) {
-        throw new Error("Website ini memblokir bahkan Googlebot dari IP Datacenter.");
+    if (html.includes("Just a moment...") || html.includes("Cloudflare")) {
+        throw new Error("Website ini memblokir akses bot sepenuhnya.");
     }
 
     const $ = cheerio.load(html);
 
     const title = $('title').text() || $('h1').first().text();
     
-    let description = $('meta[name="description"]').attr('content') || 
-                      $('meta[property="og:description"]').attr('content') || 
-                      $('meta[name="twitter:description"]').attr('content') ||
-                      $('p').first().text();
+    // EKSTRAKSI FULL TEXT
+    let articleContent = '';
+    
+    // Daftar class/id standar yang biasa dipakai media untuk membungkus isi artikel
+    const articleSelectors = [
+        'article', 
+        '.detail__body-text', 
+        '.read__content', 
+        '.entry-content', 
+        '.article-content', 
+        '.detail-text'
+    ];
+    
+    for (const selector of articleSelectors) {
+        if ($(selector).length > 0) {
+            // Ambil semua tag paragraf di dalam container tersebut
+            $(selector).find('p').each((i, el) => {
+                const text = $(el).text().trim();
+                // Abaikan teks pendek seperti caption foto atau iklan
+                if (text.length > 30) { 
+                    articleContent += text + '\n\n';
+                }
+            });
+            break; // Stop pencarian jika sudah ketemu satu container
+        }
+    }
+    
+    // Fallback: Kalau website pakai struktur aneh, ambil semua <p> yang cukup panjang
+    if (!articleContent.trim()) {
+        $('p').each((i, el) => {
+            const text = $(el).text().trim();
+            // Batas karakter lebih ketat agar menu navigasi/footer tidak ikut tersedot
+            if (text.length > 50) { 
+                articleContent += text + '\n\n';
+            }
+        });
+    }
+
+    // Kalau semuanya gagal, baru pakai meta deskripsi pendek
+    const fallbackDesc = $('meta[name="description"]').attr('content') || 'Deskripsi tidak ditemukan.';
+    const finalDescription = articleContent.trim() ? articleContent.trim() : fallbackDesc;
+
+    const cleanTitle = title ? title.replace(/\s+/g, ' ').trim() : 'Judul tidak ditemukan';
 
     return NextResponse.json({
       status: 'success',
-      title: title ? title.replace(/\s+/g, ' ').trim() : 'Judul tidak ditemukan',
-      description: description ? description.replace(/\s+/g, ' ').trim() : 'Deskripsi tidak ditemukan.',
-      prompt: `Judul: ${title ? title.replace(/\s+/g, ' ').trim() : 'Tidak ada'}\nDeskripsi: ${description ? description.replace(/\s+/g, ' ').trim() : 'Tidak ada'}`
+      title: cleanTitle,
+      description: finalDescription,
+      prompt: `Judul: ${cleanTitle}\n\nIsi Berita Lengkap:\n${finalDescription}`
     });
 
   } catch (error) {
