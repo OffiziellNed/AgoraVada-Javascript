@@ -1,55 +1,48 @@
 import { NextResponse } from 'next/server';
-import * as cheerio from 'cheerio';
 
 export async function POST(req) {
   try {
     const { url } = await req.json();
 
     if (!url) {
-      // Kita kirim error & message sekaligus biar frontend pasti dapet
       return NextResponse.json({ error: 'URL tidak boleh kosong', message: 'URL tidak boleh kosong' }, { status: 400 });
     }
 
-    // Pakai layanan corsproxy.io yang lebih handal menembus Cloudflare
-    const proxyUrl = `https://corsproxy.io/?${encodeURIComponent(url)}`;
+    // Menggunakan layanan Microlink untuk bypass WAF/Cloudflare
+    // Layanan ini otomatis mengekstrak Judul, Deskripsi, dan Gambar (Meta Tags)
+    const microlinkUrl = `https://api.microlink.io?url=${encodeURIComponent(url)}`;
     
-    const response = await fetch(proxyUrl, {
-      method: 'GET',
-      headers: {
-        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
-        'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8',
-        'Accept-Language': 'id-ID,id;q=0.9,en-US;q=0.8,en;q=0.7',
-      }
-    });
-
+    const response = await fetch(microlinkUrl);
+    
     if (!response.ok) {
-      throw new Error(`Akses ditolak proxy. Status Code: ${response.status}`);
+      throw new Error(`Akses ditolak oleh layanan ekstraktor. Status Code: ${response.status}`);
     }
 
-    const html = await response.text();
+    const data = await response.json();
     
-    if (!html || html.trim() === '') {
-       throw new Error("HTML kosong. Web tujuan memblokir render halaman.");
+    // Cek apakah Microlink berhasil mengekstrak datanya
+    if (data.status !== 'success' || !data.data) {
+       throw new Error("Gagal mengambil metadata dari web tujuan. Website super ketat.");
     }
 
-    const $ = cheerio.load(html);
-
-    const title = $('title').text() || $('h1').first().text();
+    // Ambil data yang dibutuhkan dari hasil Microlink
+    const title = data.data.title;
+    const description = data.data.description;
     
-    let description = $('meta[name="description"]').attr('content') || 
-                      $('meta[property="og:description"]').attr('content') || 
-                      $('meta[name="twitter:description"]').attr('content') ||
-                      $('p').first().text();
+    // Kalau mau sekalian narik gambar cover beritanya:
+    const imageUrl = data.data.image?.url || null;
 
     return NextResponse.json({
       status: 'success',
       title: title ? title.replace(/\s+/g, ' ').trim() : 'Judul tidak ditemukan',
       description: description ? description.replace(/\s+/g, ' ').trim() : 'Deskripsi tidak ditemukan.',
+      // Gue tambahin payload ini biar kalau Microlink dapet gambar, bisa langsung dikirim ke prompt
+      prompt: `Judul: ${title || 'Tidak ada'}\nDeskripsi: ${description || 'Tidak ada'}`,
+      gambar_url: imageUrl
     });
 
   } catch (error) {
     console.error("Error scraping:", error.message);
-    // Kita penuhi semua key (error, message, details) biar popup alert di frontend nggak undefined lagi
     const errorMessage = `Sistem anti-bot memblokir aksi ini. Detail: ${error.message}`;
     return NextResponse.json({ 
       status: 'error',
