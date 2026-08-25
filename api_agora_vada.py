@@ -1,97 +1,58 @@
 from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
-from newspaper import Article, Config
-import requests
-import xml.etree.ElementTree as ET
+from curl_cffi import requests
+from bs4 import BeautifulSoup
 
-# Inisialisasi Aplikasi FastAPI
-app = FastAPI(title="Agora Vada API")
+app = FastAPI(title="Agora Vada API - Anti-Bot Edition")
 
-# Konfigurasi CORS agar frontend Next.js (biasanya jalan di localhost:3000) bisa ngobrol sama backend ini
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],  # Catatan: Saat naik ke production, ganti "*" dengan URL domain lo
+    allow_origins=["*"],
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
 )
 
-# Model Request pakai Pydantic
 class URLRequest(BaseModel):
     url: str
 
-@app.get("/")
-def read_root():
-    return {"message": "Sistem API Agora Vada Aktif!"}
-
-# ---------------------------------------------------------
-# OPSI 1: Tarik dari RSS Feed (Sangat Aman & Anti-Blokir)
-# ---------------------------------------------------------
-@app.post("/api/tarik-rss")
-def tarik_rss(req: URLRequest):
-    """
-    Tarik data dari link RSS Feed portal berita (contoh: https://www.cnnindonesia.com/nasional/rss)
-    """
-    headers = {
-        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/115.0.0.0 Safari/537.36'
-    }
+@app.post("/api/tarik-berita")
+def tarik_berita(req: URLRequest):
     try:
-        response = requests.get(req.url, headers=headers, timeout=10)
-        response.raise_for_status()
+        # Senjata Utama: impersonate="chrome110" meniru sidik jari Google Chrome
+        response = requests.get(
+            req.url, 
+            impersonate="chrome110",
+            timeout=15
+        )
         
-        root = ET.fromstring(response.content)
-        berita_list = []
+        if response.status_code != 200:
+            raise HTTPException(status_code=response.status_code, detail="Akses tetap ditolak oleh web.")
+
+        soup = BeautifulSoup(response.content, 'html.parser')
         
-        # Standar struktur RSS feed biasanya pakai tag <item>
-        for item in root.findall('.//item'): 
-            title = item.find('title').text if item.find('title') is not None else "Tanpa Judul"
-            link = item.find('link').text if item.find('link') is not None else ""
-            description = item.find('description').text if item.find('description') is not None else "Tanpa Deskripsi"
-            
-            berita_list.append({
-                "title": title,
-                "link": link,
-                "description": description
-            })
-            
-        return {
-            "status": "success",
-            "source": req.url,
-            "total_berita": len(berita_list),
-            "data": berita_list
-        }
-    except Exception as e:
-        raise HTTPException(status_code=400, detail=f"Gagal mengambil RSS: {str(e)}")
+        # Ekstraksi Judul
+        title_tag = soup.find('title')
+        title = title_tag.text.strip() if title_tag else "Tanpa Judul"
+        
+        # Ekstraksi Full Text (seperti logika JavaScript sebelumnya)
+        article_content = ""
+        for p in soup.find_all('p'):
+            text = p.get_text(strip=True)
+            if len(text) > 40:
+                article_content += text + "\n\n"
 
-# ---------------------------------------------------------
-# OPSI 2: Tarik dari URL Artikel Langsung (Pakai newspaper3k + Custom User-Agent)
-# ---------------------------------------------------------
-@app.post("/api/tarik-artikel")
-def tarik_artikel(req: URLRequest):
-    """
-    Tarik data dari link artikel tunggal. Sudah disematkan User-Agent agar tidak dikira bot.
-    """
-    # Konfigurasi newspaper3k agar lebih "sopan" 
-    config = Config()
-    config.browser_user_agent = 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/115.0.0.0 Safari/537.36'
-    config.request_timeout = 15
-
-    try:
-        article = Article(req.url, config=config)
-        article.download()
-        article.parse()
+        if not article_content.strip():
+            meta_desc = soup.find('meta', attrs={'name': 'description'})
+            article_content = meta_desc['content'] if meta_desc else "Deskripsi tidak ditemukan."
 
         return {
             "status": "success",
-            "title": article.title,
-            "description": article.meta_description, # Narik deskripsi berita dari meta tag HTML
-            "text": article.text,
-            "authors": article.authors,
-            "publish_date": article.publish_date
+            "title": title,
+            "description": article_content.strip(),
+            "prompt": f"Judul: {title}\n\nIsi Berita Lengkap:\n{article_content.strip()}"
         }
-    except Exception as e:
-        raise HTTPException(status_code=400, detail=f"Gagal mengekstrak artikel (Mungkin WAF terlalu ketat): {str(e)}")
 
-# Untuk menjalankan server manual jika tidak pakai batch file:
-# uvicorn api_agora_vada:app --reload
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Gagal menyedot: {str(e)}")
