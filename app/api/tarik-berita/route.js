@@ -43,6 +43,14 @@ export async function POST(req) {
 
     const title = $('title').text() || $('h1').first().text();
     
+    // ==========================================
+    // EKSTRAKSI GAMBAR COVER (Ini yang tadi ketinggalan)
+    // ==========================================
+    const imageUrl = $('meta[property="og:image"]').attr('content') || 
+                     $('meta[name="twitter:image"]').attr('content') || 
+                     $('article img').first().attr('src') || 
+                     null;
+    
     // EKSTRAKSI FULL TEXT (Seluruh Paragraf)
     let articleContent = '';
     const articleSelectors = [
@@ -83,7 +91,8 @@ export async function POST(req) {
       status: 'success',
       title: cleanTitle,
       description: finalDescription,
-      prompt: `Judul: ${cleanTitle}\n\nIsi Berita Lengkap:\n${finalDescription}`
+      prompt: `Judul: ${cleanTitle}\n\nIsi Berita Lengkap:\n${finalDescription}`,
+      gambar_url: imageUrl // Sekarang URL gambar ikut dikirim ke frontend!
     });
 
   } catch (error) {
