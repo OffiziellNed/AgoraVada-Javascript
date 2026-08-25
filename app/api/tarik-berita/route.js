@@ -1,15 +1,11 @@
 import { NextResponse } from 'next/server';
 import chromium from '@sparticuz/chromium';
 import puppeteer from 'puppeteer-core';
-import puppeteerExtra from 'puppeteer-extra';
-import StealthPlugin from 'puppeteer-extra-plugin-stealth';
 import * as cheerio from 'cheerio';
 
-// Aktifkan mode Stealth agar tidak terdeteksi sebagai Bot
-puppeteerExtra.use(StealthPlugin());
+// WAJIB ADA: Mencegah Next.js mengeksekusi file ini saat proses Build (mencegah error)
+export const dynamic = 'force-dynamic';
 
-// Vercel Function maksimal jalan 10-15 detik di tier gratis, 
-// jadi kita optimasi opsi Chromium-nya
 export async function POST(req) {
   let browser = null;
 
@@ -21,7 +17,8 @@ export async function POST(req) {
     }
 
     let fetchUrl = url.trim();
-    // Trik Khusus Media Indonesia (halaman 1-2-3 jadi satu)
+    
+    // Trik Khusus Media Indonesia (menyatukan halaman berita)
     if (fetchUrl.includes('kompas.com') || fetchUrl.includes('tribunnews.com')) {
       if (!fetchUrl.includes('page=all')) {
         fetchUrl += fetchUrl.includes('?') ? '&page=all' : '?page=all';
@@ -32,11 +29,16 @@ export async function POST(req) {
       }
     }
 
-    // Eksekusi Chromium ringan khusus Vercel
+    // Eksekusi Chromium ringan khusus serverless Vercel
     const executablePath = await chromium.executablePath();
     
-    browser = await puppeteerExtra.launch({
-      args: [...chromium.args, '--no-sandbox', '--disable-setuid-sandbox'],
+    browser = await puppeteer.launch({
+      args: [
+        ...chromium.args, 
+        '--no-sandbox', 
+        '--disable-setuid-sandbox',
+        '--disable-blink-features=AutomationControlled' // Parameter anti-bot bawaan Chrome
+      ],
       defaultViewport: chromium.defaultViewport,
       executablePath: executablePath || undefined,
       headless: chromium.headless,
@@ -45,7 +47,16 @@ export async function POST(req) {
 
     const page = await browser.newPage();
     
-    // Blokir gambar dan CSS biar loading-nya ngebut (mencegah Vercel Timeout)
+    // ==========================================
+    // INJEKSI MANUAL STEALTH (Bypass Cloudflare)
+    // ==========================================
+    await page.setUserAgent('Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36');
+    await page.evaluateOnNewDocument(() => {
+      // Menghapus jejak bahwa ini adalah browser otomatis
+      Object.defineProperty(navigator, 'webdriver', { get: () => false });
+    });
+
+    // Blokir request yang berat (gambar, css, font) agar tidak timeout di Vercel
     await page.setRequestInterception(true);
     page.on('request', (request) => {
       if (['image', 'stylesheet', 'font', 'media'].includes(request.resourceType())) {
@@ -55,10 +66,9 @@ export async function POST(req) {
       }
     });
 
-    // Buka website (tunggu sampai struktur HTML selesai dimuat)
+    // Buka halaman web dengan batas waktu 12 detik
     await page.goto(fetchUrl, { waitUntil: 'domcontentloaded', timeout: 12000 });
     
-    // Ambil seluruh HTML yang sudah dirender oleh Puppeteer
     const html = await page.content();
     await browser.close();
 
@@ -67,7 +77,7 @@ export async function POST(req) {
 
     const title = $('title').text() || $('h1').first().text();
     
-    // EKSTRAKSI FULL TEXT
+    // Ekstraksi teks dari artikel utama
     let articleContent = '';
     const articleSelectors = ['article', '.detail__body-text', '.read__content', '.entry-content', '.article-content', '.detail-text'];
     
@@ -81,6 +91,7 @@ export async function POST(req) {
         }
     }
     
+    // Fallback ekstraksi jika struktur HTML tidak standar
     if (!articleContent.trim()) {
         $('p').each((i, el) => {
             const text = $(el).text().trim();
@@ -104,8 +115,8 @@ export async function POST(req) {
     console.error("Error Puppeteer:", error.message);
     return NextResponse.json({ 
       status: 'error',
-      error: `Gagal. ${error.message}`,
-      message: `Gagal. ${error.message}`
+      error: `Gagal menyedot data. Detail: ${error.message}`,
+      message: `Gagal menyedot data. Detail: ${error.message}`
     }, { status: 500 });
   }
 }
