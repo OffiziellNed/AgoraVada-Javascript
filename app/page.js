@@ -320,7 +320,9 @@ export default function AgoraVadaPortal() {
                       if(data.gambar_url) setImageUrl(data.gambar_url);
                       setCurrentPage(2);
                     } else {
-                      alert("Gagal menyedot: " + data.detail);
+                      // BAGIAN INI YANG GUE UBAH BIAR NGGAK UNDEFINED
+                      const pesanError = data.error || data.message || data.details || data.detail || "Terhalang sistem keamanan website.";
+                      alert("Gagal menyedot: " + pesanError);
                       setPromptTeks("Gagal menyedot data otomatis. Silakan ketik manual.");
                     }
                   } catch(err) { 
