@@ -1,100 +1,64 @@
-import * as cheerio from 'cheerio';
 import { NextResponse } from 'next/server';
+import * as cheerio from 'cheerio';
 
-export async function POST(request) {
+export async function POST(req) {
   try {
-    const { url } = await request.json();
-    
-    let currentUrl = url;
-    let title = '';
-    let image = '';
-    let fullContent = '';
-    let pageCount = 1;
-    const maxPages = 5; // Batas maksimal halaman (mencegah infinite loop & server timeout)
-    const visitedUrls = new Set(); // Merekam URL agar tidak tersedot berulang
+    const { url } = await req.json();
 
-    // LOOPING UNTUK MENYEDOT MULTI-HALAMAN
-    while (currentUrl && pageCount <= maxPages && !visitedUrls.has(currentUrl)) {
-      visitedUrls.add(currentUrl);
-      
-      // Menyamar sebagai browser Chrome agar tidak diblokir web berita
-      const response = await fetch(currentUrl, {
-        headers: {
-          'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/114.0.0.0 Safari/537.36'
-        }
-      });
-
-      if (!response.ok) {
-        if (pageCount === 1) throw new Error("Gagal menyedot web. Website mungkin dilindungi anti-bot.");
-        else break; // Jika halaman 2 error, hentikan pencarian & pakai data yg ada
-      }
-      
-      const html = await response.text();
-      const $ = cheerio.load(html);
-
-      // 1 & 2. Ambil Meta Data HANYA dari halaman pertama
-      if (pageCount === 1) {
-        title = $('meta[property="og:title"]').attr('content') || $('title').text() || $('h1').first().text();
-        image = $('meta[property="og:image"]').attr('content') || $('meta[name="twitter:image"]').attr('content') || '';
-      }
-
-      // 3. Ambil Isi Teks Berita di Halaman Saat Ini
-      let pageContent = '';
-      const articleBody = $('article, .read__content, .detail__body-text, .post-content, main');
-      if (articleBody.length > 0) {
-        articleBody.find('p').each((i, el) => { pageContent += $(el).text() + '\n\n'; });
-      } else {
-        $('p').each((i, el) => { pageContent += $(el).text() + '\n\n'; });
-      }
-      
-      // Gabungkan teks dari halaman ini ke keseluruhan teks
-      fullContent += pageContent;
-
-      // 4. MENCARI LINK HALAMAN SELANJUTNYA
-      let nextLink = null;
-      $('a').each((i, el) => {
-        const text = $(el).text().trim().toLowerCase();
-        const href = $(el).attr('href');
-        
-        // Cek apakah tombol berupa tulisan "selanjutnya", "next", "»", atau angka halaman berikutnya (misal: "2")
-        if (href && (text === 'selanjutnya' || text === 'next' || text === '»' || text === (pageCount + 1).toString())) {
-          nextLink = href;
-        }
-      });
-
-      // Jika ada link selanjutnya, format ulang URL-nya untuk di-looping
-      if (nextLink) {
-        if (nextLink.startsWith('?')) {
-          const baseUrlObj = new URL(currentUrl);
-          currentUrl = baseUrlObj.origin + baseUrlObj.pathname + nextLink;
-        } else if (nextLink.startsWith('/')) {
-          const baseUrlObj = new URL(currentUrl);
-          currentUrl = baseUrlObj.origin + nextLink;
-        } else if (nextLink.startsWith('http')) {
-          currentUrl = nextLink;
-        } else {
-          currentUrl = null; // Format tidak dikenali, hentikan loop
-        }
-        pageCount++;
-      } else {
-        currentUrl = null; // Tidak ada halaman selanjutnya, loop selesai
-      }
+    if (!url) {
+      return NextResponse.json({ error: 'URL tidak boleh kosong' }, { status: 400 });
     }
 
-    // 5. Merapikan spasi yang berlebihan
-    fullContent = fullContent.replace(/\n\s*\n/g, '\n\n').trim();
+    // Trik memalsukan Header agar terlihat seperti browser manusia asli
+    const response = await fetch(url, {
+      method: 'GET',
+      headers: {
+        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
+        'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,*/*;q=0.8',
+        'Accept-Language': 'id-ID,id;q=0.9,en-US;q=0.8,en;q=0.7',
+        'Referer': 'https://www.google.com/',
+        'Connection': 'keep-alive',
+        'Upgrade-Insecure-Requests': '1'
+      },
+    });
 
-    // Template untuk dimasukkan ke Textarea Page 2 (Teks disedot 100% tanpa dipotong substring)
-    const promptTeks = `[JUDUL BERITA]\n${title}\n\n[ISI BERITA]\n${fullContent}`;
+    if (!response.ok) {
+      throw new Error(`Akses ditolak server tujuan. Status: ${response.status}`);
+    }
+
+    const html = await response.text();
     
+    // Load HTML pakai Cheerio
+    const $ = cheerio.load(html);
+
+    // 1. Ambil Judul
+    const title = $('title').text() || $('h1').first().text();
+    
+    // 2. Ambil Deskripsi (Prioritas dari Meta Tag SEO)
+    let description = $('meta[name="description"]').attr('content') || 
+                      $('meta[property="og:description"]').attr('content') || 
+                      $('meta[name="twitter:description"]').attr('content');
+
+    // 3. Fallback: Kalau meta deskripsi nggak ada, sedot paragraf pertama dari artikel
+    if (!description) {
+       description = $('p').first().text();
+    }
+
+    // Bersihkan spasi berlebih
+    const cleanTitle = title.replace(/\s+/g, ' ').trim();
+    const cleanDescription = description ? description.replace(/\s+/g, ' ').trim() : 'Deskripsi tidak ditemukan.';
+
     return NextResponse.json({
-      status: "success",
-      prompt: promptTeks,
-      gambar_url: image,
-      sumber: `Sumber Berita: ${new URL(url).hostname}`
+      status: 'success',
+      title: cleanTitle,
+      description: cleanDescription,
     });
 
   } catch (error) {
-    return NextResponse.json({ status: "error", detail: error.message });
+    console.error("Error scraping:", error.message);
+    return NextResponse.json({ 
+      error: 'Gagal menyedot web. Website mungkin dilindungi anti-bot atau IP server diblokir.',
+      details: error.message
+    }, { status: 500 });
   }
 }
