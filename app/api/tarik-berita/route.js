@@ -1,57 +1,54 @@
 import { NextResponse } from 'next/server';
+import * as cheerio from 'cheerio';
 
 export async function POST(req) {
   try {
-    const body = await req.json();
-    const rawUrl = body.url;
+    const { url } = await req.json();
 
-    if (!rawUrl) {
-      return NextResponse.json({ error: 'URL tidak boleh kosong', message: 'URL tidak boleh kosong' }, { status: 400 });
+    if (!url) {
+      return NextResponse.json({ error: 'URL kosong', message: 'URL tidak boleh kosong' }, { status: 400 });
     }
 
-    // Bersihkan URL dari spasi tersembunyi yang sering bikin error 400
-    const url = rawUrl.trim();
-
-    // Menggunakan API Metatags dari Dub.co (Lebih tahan banting nembus anti-bot)
-    const dubUrl = `https://api.dub.co/metatags?url=${encodeURIComponent(url)}`;
-    
-    const response = await fetch(dubUrl, {
+    // TRIK GOOGLEBOT: Menyamar sebagai mesin pencari Google agar masuk whitelist WAF
+    const response = await fetch(url.trim(), {
       method: 'GET',
       headers: {
-        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
-      }
+        'User-Agent': 'Mozilla/5.0 (compatible; Googlebot/2.1; +http://www.google.com/bot.html)',
+        'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8',
+        'Accept-Language': 'id-ID,id;q=0.9,en-US;q=0.8,en;q=0.7',
+        'Referer': 'https://www.google.com/'
+      },
     });
-    
-    if (!response.ok) {
-      throw new Error(`Akses ditolak API Ekstraktor. Status Code: ${response.status}`);
+
+    const html = await response.text();
+
+    // Cek kalau ternyata Googlebot juga ikut dicegat pakai halaman Cloudflare
+    if (html.includes("Just a moment...") || html.includes("Cloudflare") || html.includes("Attention Required!")) {
+        throw new Error("Website ini memblokir bahkan Googlebot dari IP Datacenter.");
     }
 
-    const data = await response.json();
-    
-    if (!data || !data.title) {
-       throw new Error("Gagal mengambil data. Website benar-benar mengunci akses bot.");
-    }
+    const $ = cheerio.load(html);
 
-    const title = data.title;
-    const description = data.description;
-    const imageUrl = data.image || null;
+    const title = $('title').text() || $('h1').first().text();
+    
+    let description = $('meta[name="description"]').attr('content') || 
+                      $('meta[property="og:description"]').attr('content') || 
+                      $('meta[name="twitter:description"]').attr('content') ||
+                      $('p').first().text();
 
     return NextResponse.json({
       status: 'success',
       title: title ? title.replace(/\s+/g, ' ').trim() : 'Judul tidak ditemukan',
       description: description ? description.replace(/\s+/g, ' ').trim() : 'Deskripsi tidak ditemukan.',
-      prompt: `Judul: ${title || 'Tidak ada'}\nDeskripsi: ${description || 'Tidak ada'}`,
-      gambar_url: imageUrl
+      prompt: `Judul: ${title ? title.replace(/\s+/g, ' ').trim() : 'Tidak ada'}\nDeskripsi: ${description ? description.replace(/\s+/g, ' ').trim() : 'Tidak ada'}`
     });
 
   } catch (error) {
     console.error("Error scraping:", error.message);
-    const errorMessage = `Sistem anti-bot masih memblokir. Detail: ${error.message}`;
     return NextResponse.json({ 
       status: 'error',
-      error: errorMessage,
-      message: errorMessage,
-      details: errorMessage
+      error: `Gagal. ${error.message}`,
+      message: `Gagal. ${error.message}`
     }, { status: 500 });
   }
 }
