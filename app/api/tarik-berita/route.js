@@ -6,28 +6,31 @@ export async function POST(req) {
     const { url } = await req.json();
 
     if (!url) {
-      return NextResponse.json({ error: 'URL tidak boleh kosong' }, { status: 400 });
+      return NextResponse.json({ message: 'URL tidak boleh kosong' }, { status: 400 });
     }
 
-    // Trik memalsukan Header agar terlihat seperti browser manusia asli
-    const response = await fetch(url, {
+    // Trik Bypass IP Vercel: Menggunakan layanan Proxy AllOrigins
+    const proxyUrl = `https://api.allorigins.win/get?url=${encodeURIComponent(url)}`;
+    
+    const response = await fetch(proxyUrl, {
       method: 'GET',
       headers: {
         'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
-        'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,*/*;q=0.8',
-        'Accept-Language': 'id-ID,id;q=0.9,en-US;q=0.8,en;q=0.7',
-        'Referer': 'https://www.google.com/',
-        'Connection': 'keep-alive',
-        'Upgrade-Insecure-Requests': '1'
-      },
+      }
     });
 
     if (!response.ok) {
-      throw new Error(`Akses ditolak server tujuan. Status: ${response.status}`);
+      throw new Error(`Akses ditolak proxy. Status: ${response.status}`);
     }
 
-    const html = await response.text();
+    // AllOrigins mengembalikan data dalam bentuk JSON, HTML-nya ada di dalam "contents"
+    const data = await response.json();
+    const html = data.contents;
     
+    if (!html) {
+       throw new Error("Gagal mengambil konten HTML dari web tujuan.");
+    }
+
     // Load HTML pakai Cheerio
     const $ = cheerio.load(html);
 
@@ -45,7 +48,7 @@ export async function POST(req) {
     }
 
     // Bersihkan spasi berlebih
-    const cleanTitle = title.replace(/\s+/g, ' ').trim();
+    const cleanTitle = title ? title.replace(/\s+/g, ' ').trim() : 'Judul tidak ditemukan';
     const cleanDescription = description ? description.replace(/\s+/g, ' ').trim() : 'Deskripsi tidak ditemukan.';
 
     return NextResponse.json({
@@ -56,8 +59,10 @@ export async function POST(req) {
 
   } catch (error) {
     console.error("Error scraping:", error.message);
+    // Format error disesuaikan agar terbaca oleh frontend, bukan "undefined"
     return NextResponse.json({ 
-      error: 'Gagal menyedot web. Website mungkin dilindungi anti-bot atau IP server diblokir.',
+      status: 'error',
+      message: 'Gagal menyedot web. Terhalang sistem keamanan anti-bot tingkat tinggi.',
       details: error.message
     }, { status: 500 });
   }
