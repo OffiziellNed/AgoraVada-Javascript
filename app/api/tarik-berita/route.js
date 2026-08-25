@@ -1,7 +1,18 @@
 import { NextResponse } from 'next/server';
+import chromium from '@sparticuz/chromium';
+import puppeteer from 'puppeteer-core';
+import puppeteerExtra from 'puppeteer-extra';
+import StealthPlugin from 'puppeteer-extra-plugin-stealth';
 import * as cheerio from 'cheerio';
 
+// Aktifkan mode Stealth agar tidak terdeteksi sebagai Bot
+puppeteerExtra.use(StealthPlugin());
+
+// Vercel Function maksimal jalan 10-15 detik di tier gratis, 
+// jadi kita optimasi opsi Chromium-nya
 export async function POST(req) {
+  let browser = null;
+
   try {
     const { url } = await req.json();
 
@@ -10,8 +21,7 @@ export async function POST(req) {
     }
 
     let fetchUrl = url.trim();
-    
-    // Trik Khusus Media Indonesia: Paksa tampilkan semua halaman (page=all / single=1)
+    // Trik Khusus Media Indonesia (halaman 1-2-3 jadi satu)
     if (fetchUrl.includes('kompas.com') || fetchUrl.includes('tribunnews.com')) {
       if (!fetchUrl.includes('page=all')) {
         fetchUrl += fetchUrl.includes('?') ? '&page=all' : '?page=all';
@@ -22,69 +32,64 @@ export async function POST(req) {
       }
     }
 
-    // Menyamar sebagai Googlebot
-    const response = await fetch(fetchUrl, {
-      method: 'GET',
-      headers: {
-        'User-Agent': 'Mozilla/5.0 (compatible; Googlebot/2.1; +http://www.google.com/bot.html)',
-        'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8',
-        'Accept-Language': 'id-ID,id;q=0.9,en-US;q=0.8,en;q=0.7',
-        'Referer': 'https://www.google.com/'
-      },
+    // Eksekusi Chromium ringan khusus Vercel
+    const executablePath = await chromium.executablePath();
+    
+    browser = await puppeteerExtra.launch({
+      args: [...chromium.args, '--no-sandbox', '--disable-setuid-sandbox'],
+      defaultViewport: chromium.defaultViewport,
+      executablePath: executablePath || undefined,
+      headless: chromium.headless,
+      ignoreHTTPSErrors: true,
     });
 
-    const html = await response.text();
+    const page = await browser.newPage();
+    
+    // Blokir gambar dan CSS biar loading-nya ngebut (mencegah Vercel Timeout)
+    await page.setRequestInterception(true);
+    page.on('request', (request) => {
+      if (['image', 'stylesheet', 'font', 'media'].includes(request.resourceType())) {
+        request.abort();
+      } else {
+        request.continue();
+      }
+    });
 
-    if (html.includes("Just a moment...") || html.includes("Cloudflare")) {
-        throw new Error("Website ini memblokir akses bot sepenuhnya.");
-    }
+    // Buka website (tunggu sampai struktur HTML selesai dimuat)
+    await page.goto(fetchUrl, { waitUntil: 'domcontentloaded', timeout: 12000 });
+    
+    // Ambil seluruh HTML yang sudah dirender oleh Puppeteer
+    const html = await page.content();
+    await browser.close();
 
+    // Bedah HTML pakai Cheerio
     const $ = cheerio.load(html);
 
     const title = $('title').text() || $('h1').first().text();
     
     // EKSTRAKSI FULL TEXT
     let articleContent = '';
-    
-    // Daftar class/id standar yang biasa dipakai media untuk membungkus isi artikel
-    const articleSelectors = [
-        'article', 
-        '.detail__body-text', 
-        '.read__content', 
-        '.entry-content', 
-        '.article-content', 
-        '.detail-text'
-    ];
+    const articleSelectors = ['article', '.detail__body-text', '.read__content', '.entry-content', '.article-content', '.detail-text'];
     
     for (const selector of articleSelectors) {
         if ($(selector).length > 0) {
-            // Ambil semua tag paragraf di dalam container tersebut
             $(selector).find('p').each((i, el) => {
                 const text = $(el).text().trim();
-                // Abaikan teks pendek seperti caption foto atau iklan
-                if (text.length > 30) { 
-                    articleContent += text + '\n\n';
-                }
+                if (text.length > 30) articleContent += text + '\n\n';
             });
-            break; // Stop pencarian jika sudah ketemu satu container
+            break;
         }
     }
     
-    // Fallback: Kalau website pakai struktur aneh, ambil semua <p> yang cukup panjang
     if (!articleContent.trim()) {
         $('p').each((i, el) => {
             const text = $(el).text().trim();
-            // Batas karakter lebih ketat agar menu navigasi/footer tidak ikut tersedot
-            if (text.length > 50) { 
-                articleContent += text + '\n\n';
-            }
+            if (text.length > 50) articleContent += text + '\n\n';
         });
     }
 
-    // Kalau semuanya gagal, baru pakai meta deskripsi pendek
     const fallbackDesc = $('meta[name="description"]').attr('content') || 'Deskripsi tidak ditemukan.';
     const finalDescription = articleContent.trim() ? articleContent.trim() : fallbackDesc;
-
     const cleanTitle = title ? title.replace(/\s+/g, ' ').trim() : 'Judul tidak ditemukan';
 
     return NextResponse.json({
@@ -95,7 +100,8 @@ export async function POST(req) {
     });
 
   } catch (error) {
-    console.error("Error scraping:", error.message);
+    if (browser) await browser.close();
+    console.error("Error Puppeteer:", error.message);
     return NextResponse.json({ 
       status: 'error',
       error: `Gagal. ${error.message}`,
