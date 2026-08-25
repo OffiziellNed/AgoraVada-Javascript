@@ -2,48 +2,51 @@ import { NextResponse } from 'next/server';
 
 export async function POST(req) {
   try {
-    const { url } = await req.json();
+    const body = await req.json();
+    const rawUrl = body.url;
 
-    if (!url) {
+    if (!rawUrl) {
       return NextResponse.json({ error: 'URL tidak boleh kosong', message: 'URL tidak boleh kosong' }, { status: 400 });
     }
 
-    // Menggunakan layanan Microlink untuk bypass WAF/Cloudflare
-    // Layanan ini otomatis mengekstrak Judul, Deskripsi, dan Gambar (Meta Tags)
-    const microlinkUrl = `https://api.microlink.io?url=${encodeURIComponent(url)}`;
+    // Bersihkan URL dari spasi tersembunyi yang sering bikin error 400
+    const url = rawUrl.trim();
+
+    // Menggunakan API Metatags dari Dub.co (Lebih tahan banting nembus anti-bot)
+    const dubUrl = `https://api.dub.co/metatags?url=${encodeURIComponent(url)}`;
     
-    const response = await fetch(microlinkUrl);
+    const response = await fetch(dubUrl, {
+      method: 'GET',
+      headers: {
+        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
+      }
+    });
     
     if (!response.ok) {
-      throw new Error(`Akses ditolak oleh layanan ekstraktor. Status Code: ${response.status}`);
+      throw new Error(`Akses ditolak API Ekstraktor. Status Code: ${response.status}`);
     }
 
     const data = await response.json();
     
-    // Cek apakah Microlink berhasil mengekstrak datanya
-    if (data.status !== 'success' || !data.data) {
-       throw new Error("Gagal mengambil metadata dari web tujuan. Website super ketat.");
+    if (!data || !data.title) {
+       throw new Error("Gagal mengambil data. Website benar-benar mengunci akses bot.");
     }
 
-    // Ambil data yang dibutuhkan dari hasil Microlink
-    const title = data.data.title;
-    const description = data.data.description;
-    
-    // Kalau mau sekalian narik gambar cover beritanya:
-    const imageUrl = data.data.image?.url || null;
+    const title = data.title;
+    const description = data.description;
+    const imageUrl = data.image || null;
 
     return NextResponse.json({
       status: 'success',
       title: title ? title.replace(/\s+/g, ' ').trim() : 'Judul tidak ditemukan',
       description: description ? description.replace(/\s+/g, ' ').trim() : 'Deskripsi tidak ditemukan.',
-      // Gue tambahin payload ini biar kalau Microlink dapet gambar, bisa langsung dikirim ke prompt
       prompt: `Judul: ${title || 'Tidak ada'}\nDeskripsi: ${description || 'Tidak ada'}`,
       gambar_url: imageUrl
     });
 
   } catch (error) {
     console.error("Error scraping:", error.message);
-    const errorMessage = `Sistem anti-bot memblokir aksi ini. Detail: ${error.message}`;
+    const errorMessage = `Sistem anti-bot masih memblokir. Detail: ${error.message}`;
     return NextResponse.json({ 
       status: 'error',
       error: errorMessage,
