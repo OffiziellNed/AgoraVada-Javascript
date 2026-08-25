@@ -1,61 +1,97 @@
 from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
-from newspaper import Article
-from urllib.parse import urlparse
+from newspaper import Article, Config
+import requests
+import xml.etree.ElementTree as ET
 
-# Inisialisasi Aplikasi API
+# Inisialisasi Aplikasi FastAPI
 app = FastAPI(title="Agora Vada API")
 
-# Wajib: Mengizinkan Vercel (Frontend) berkomunikasi dengan API ini
+# Konfigurasi CORS agar frontend Next.js (biasanya jalan di localhost:3000) bisa ngobrol sama backend ini
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],  # Nanti kalau sudah aman, ganti dengan URL Vercel lo
+    allow_origins=["*"],  # Catatan: Saat naik ke production, ganti "*" dengan URL domain lo
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
 )
 
-# Skema format data yang masuk
-class URLInput(BaseModel):
+# Model Request pakai Pydantic
+class URLRequest(BaseModel):
     url: str
 
-@app.post("/tarik-berita")
-async def tarik_berita(data: URLInput):
+@app.get("/")
+def read_root():
+    return {"message": "Sistem API Agora Vada Aktif!"}
+
+# ---------------------------------------------------------
+# OPSI 1: Tarik dari RSS Feed (Sangat Aman & Anti-Blokir)
+# ---------------------------------------------------------
+@app.post("/api/tarik-rss")
+def tarik_rss(req: URLRequest):
+    """
+    Tarik data dari link RSS Feed portal berita (contoh: https://www.cnnindonesia.com/nasional/rss)
+    """
+    headers = {
+        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/115.0.0.0 Safari/537.36'
+    }
     try:
-        # Menyedot artikel menggunakan newspaper3k
-        article = Article(data.url)
-        article.download()
-        article.parse()
+        response = requests.get(req.url, headers=headers, timeout=10)
+        response.raise_for_status()
         
-        judul = article.title
-        teks = article.text
-	gambar_url = article.top_image
+        root = ET.fromstring(response.content)
+        berita_list = []
         
-        # Jika website memblokir scraping
-        if not teks or len(teks.strip()) < 20:
-            teks = "(⚠️ Website ini memblokir penarikan teks otomatis. Silakan Copy-Paste manual teks beritanya di sini.)"
-        
-        # Meracik prompt sesuai standar lo sebelumnya
-        prompt = f"""Tolong buat 10 judul berita menggunakan hook dan copywriter handal untuk media alternatif "AgoraVada", serta buatkan caption untuk instagram, normatif saja dan informatif. Pastikan diakhiri oleh sumber berita dan 3 hastag (wajib ada #AgoraVada sisanya disesuaikan dengan kata kunci subjek dan topik yang dibahas).
-
-BERIKUT REFERENSI BERITANYA:
-
-JUDUL ASLI: {judul}
-
-ISI BERITA KESELURUHAN: {teks}"""
-
-        # Format sumber berita
-        domain = urlparse(data.url).netloc.replace('www.', '')
-        sumber = f"Sumber Berita: {domain}"
-        
+        # Standar struktur RSS feed biasanya pakai tag <item>
+        for item in root.findall('.//item'): 
+            title = item.find('title').text if item.find('title') is not None else "Tanpa Judul"
+            link = item.find('link').text if item.find('link') is not None else ""
+            description = item.find('description').text if item.find('description') is not None else "Tanpa Deskripsi"
+            
+            berita_list.append({
+                "title": title,
+                "link": link,
+                "description": description
+            })
+            
         return {
             "status": "success",
-            "prompt": prompt,
-            "sumber": sumber,
-            "gambar_url": gambar_url
-	
+            "source": req.url,
+            "total_berita": len(berita_list),
+            "data": berita_list
         }
-        
     except Exception as e:
-        raise HTTPException(status_code=400, detail=f"Gagal menarik berita: {str(e)}")
+        raise HTTPException(status_code=400, detail=f"Gagal mengambil RSS: {str(e)}")
+
+# ---------------------------------------------------------
+# OPSI 2: Tarik dari URL Artikel Langsung (Pakai newspaper3k + Custom User-Agent)
+# ---------------------------------------------------------
+@app.post("/api/tarik-artikel")
+def tarik_artikel(req: URLRequest):
+    """
+    Tarik data dari link artikel tunggal. Sudah disematkan User-Agent agar tidak dikira bot.
+    """
+    # Konfigurasi newspaper3k agar lebih "sopan" 
+    config = Config()
+    config.browser_user_agent = 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/115.0.0.0 Safari/537.36'
+    config.request_timeout = 15
+
+    try:
+        article = Article(req.url, config=config)
+        article.download()
+        article.parse()
+
+        return {
+            "status": "success",
+            "title": article.title,
+            "description": article.meta_description, # Narik deskripsi berita dari meta tag HTML
+            "text": article.text,
+            "authors": article.authors,
+            "publish_date": article.publish_date
+        }
+    except Exception as e:
+        raise HTTPException(status_code=400, detail=f"Gagal mengekstrak artikel (Mungkin WAF terlalu ketat): {str(e)}")
+
+# Untuk menjalankan server manual jika tidak pakai batch file:
+# uvicorn api_agora_vada:app --reload
