@@ -3,3 +3,5 @@ uvicorn
 pydantic
 newspaper3k
 lxml
+curl_cffi
+beautifulsoup4
