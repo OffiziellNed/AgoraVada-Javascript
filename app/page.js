@@ -24,8 +24,8 @@ export default function AgoraVadaPortal() {
   const [ukuranFont, setUkuranFont] = useState(79);
   const [jarakBaris, setJarakBaris] = useState(1.4);
 
-  const [sumberX, setSumberX] = useState(142); 
-  const [sumberY, setSumberY] = useState(710);
+  const [sumberX, setSumberX] = useState(145); 
+  const [sumberY, setSumberY] = useState(1243);
   const [ukuranFontSumber, setUkuranFontSumber] = useState(28);
 
   const canvasRef = useRef(null);
@@ -320,7 +320,6 @@ export default function AgoraVadaPortal() {
                       if(data.gambar_url) setImageUrl(data.gambar_url);
                       setCurrentPage(2);
                     } else {
-                      // BAGIAN INI YANG GUE UBAH BIAR NGGAK UNDEFINED
                       const pesanError = data.error || data.message || data.details || data.detail || "Terhalang sistem keamanan website.";
                       alert("Gagal menyedot: " + pesanError);
                       setPromptTeks("Gagal menyedot data otomatis. Silakan ketik manual.");
@@ -454,7 +453,7 @@ export default function AgoraVadaPortal() {
                 <div style={{ backgroundColor: '#0d1117', padding: '12px 16px', borderRadius: '12px', border: '1px solid #30363d' }}>
                   <label style={{ fontSize: '11px', fontWeight: '700', color: '#f78166', display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px' }}>
                     <span>📍 KONTROL SUMBER BERITA</span>
-                    <button onClick={() => { setSumberX(142); setSumberY(710); setUkuranFontSumber(28); }} style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: '14px', padding: 0 }} title="Kembalikan ke Setelan Awal">🔄</button>
+                    <button onClick={() => { setSumberX(145); setSumberY(1243); setUkuranFontSumber(28); }} style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: '14px', padding: 0 }} title="Kembalikan ke Setelan Awal">🔄</button>
                   </label>
                   <div style={{ display: 'grid', gridTemplateColumns: '1fr', gap: '8px' }}>
                     <div>
