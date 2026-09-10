@@ -8,6 +8,7 @@ export default function AgoraVadaPortal() {
   const [promptTeks, setPromptTeks] = useState('');
   const [rawBeritaContent, setRawBeritaContent] = useState('');
   const [promptMode, setPromptMode] = useState('homeless'); // 'homeless' | 'threads'
+  const [selectedHook, setSelectedHook] = useState('urgent'); // 'urgent' | 'respond' | 'versus' | 'hoax'
   
   const [judulHtml, setJudulHtml] = useState('');
   const [sumberBerita, setSumberBerita] = useState('');
@@ -480,11 +481,168 @@ export default function AgoraVadaPortal() {
                   </div>
                 </div>
 
-                {/* BOARD GAMBAR (KANAN) */}
-                <div style={{ display: 'flex', flexDirection: 'column', gap: '16px', width: '280px', marginTop: '28px' }}>
+                {/* BOARD GAMBAR (KANAN) + BASIC HOOK */}
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '12px', width: '300px', marginTop: '28px' }}>
                   <div style={{ backgroundColor: '#161b22', padding: '16px', borderRadius: '10px', border: '1px solid #30363d' }}>
                     <label style={{ fontSize: '11px', fontWeight: '700', color: '#3fb950', display: 'block', marginBottom: '8px' }}>🖼️ UPLOAD DARI PC/HP</label>
                     <input type="file" accept="image/*" onChange={handleUploadFoto} style={{ fontSize: '11px', color: '#c9d1d9', width: '100%' }} />
+                  </div>
+
+                  {/* BASIC HOOK PANEL */}
+                  <div style={{ backgroundColor: '#0d1117', padding: '14px', borderRadius: '12px', border: '1px solid #30363d' }}>
+                    <label style={{ fontSize: '11px', fontWeight: '800', color: '#f0883e', display: 'block', marginBottom: '10px', letterSpacing: '0.5px' }}>🪝 BASIC HOOK - Panduan Berkata-kata</label>
+                    
+                    {/* MENU TABS */}
+                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '6px', marginBottom: '12px' }}>
+                      <button
+                        onClick={() => setSelectedHook('urgent')}
+                        style={{
+                          backgroundColor: selectedHook === 'urgent' ? '#f0883e' : '#21262d',
+                          color: selectedHook === 'urgent' ? '#000' : '#8b949e',
+                          padding: '8px 6px',
+                          borderRadius: '6px',
+                          fontSize: '10px',
+                          fontWeight: '700',
+                          border: selectedHook === 'urgent' ? '1px solid #f0883e' : '1px solid #30363d',
+                          cursor: 'pointer'
+                        }}
+                      >
+                        🚨 Urgent
+                      </button>
+                      <button
+                        onClick={() => setSelectedHook('respond')}
+                        style={{
+                          backgroundColor: selectedHook === 'respond' ? '#3fb950' : '#21262d',
+                          color: selectedHook === 'respond' ? '#000' : '#8b949e',
+                          padding: '8px 6px',
+                          borderRadius: '6px',
+                          fontSize: '10px',
+                          fontWeight: '700',
+                          border: selectedHook === 'respond' ? '1px solid #3fb950' : '1px solid #30363d',
+                          cursor: 'pointer'
+                        }}
+                      >
+                        🛡️ Respond Warga
+                      </button>
+                      <button
+                        onClick={() => setSelectedHook('versus')}
+                        style={{
+                          backgroundColor: selectedHook === 'versus' ? '#58a6ff' : '#21262d',
+                          color: selectedHook === 'versus' ? '#000' : '#8b949e',
+                          padding: '8px 6px',
+                          borderRadius: '6px',
+                          fontSize: '10px',
+                          fontWeight: '700',
+                          border: selectedHook === 'versus' ? '1px solid #58a6ff' : '1px solid #30363d',
+                          cursor: 'pointer'
+                        }}
+                      >
+                        ⚔️ Versus
+                      </button>
+                      <button
+                        onClick={() => setSelectedHook('hoax')}
+                        style={{
+                          backgroundColor: selectedHook === 'hoax' ? '#f85149' : '#21262d',
+                          color: selectedHook === 'hoax' ? '#fff' : '#8b949e',
+                          padding: '8px 6px',
+                          borderRadius: '6px',
+                          fontSize: '10px',
+                          fontWeight: '700',
+                          border: selectedHook === 'hoax' ? '1px solid #f85149' : '1px solid #30363d',
+                          cursor: 'pointer'
+                        }}
+                      >
+                        🚫 HOAX
+                      </button>
+                    </div>
+
+                    {/* CONTENT */}
+                    <div style={{ backgroundColor: '#161b22', padding: '12px', borderRadius: '8px', border: '1px solid #21262d', maxHeight: '420px', overflowY: 'auto' }}>
+                      {selectedHook === 'urgent' && (
+                        <div style={{ fontSize: '11px', lineHeight: '1.5', color: '#c9d1d9' }}>
+                          <div style={{ fontWeight: '800', color: '#f0883e', marginBottom: '6px', fontSize: '12px' }}>Urgent: Perintah! + Fenomena + Lokasi</div>
+                          <div style={{ marginBottom: '8px', color: '#8b949e' }}>
+                            <div><strong style={{color: '#f0883e'}}>Perintah</strong> [ Awas!, Hati-Hati!, Siaga!, Waspada! Tolak! Buruan! Pakai Masker! pada intinya menyuruh orang lain melakukan sesuatu ]</div>
+                            <div style={{marginTop: '4px'}}><strong style={{color: '#f0883e'}}>Fenomena</strong> [ Kejadian/Peristiwa, ada apa sih? ]</div>
+                          </div>
+                          <div style={{ borderTop: '1px dashed #30363d', paddingTop: '8px', marginTop: '8px' }}>
+                            <div style={{ fontWeight: '700', color: '#e6edf3', marginBottom: '4px' }}>Contoh:</div>
+                            <div style={{ backgroundColor: '#0d1117', padding: '6px 8px', borderRadius: '6px', marginBottom: '6px', borderLeft: '3px solid #f0883e' }}>
+                              <strong>Contoh 1</strong> - HINDARI! Macet Total Lumpuhkan Tol Jagorawi
+                            </div>
+                            <div style={{ backgroundColor: '#0d1117', padding: '6px 8px', borderRadius: '6px', marginBottom: '6px', borderLeft: '3px solid #f0883e' }}>
+                              <strong>Contoh 2</strong> - AWAS! Begal Bersenjata Berkeliaran di Depok Malam Hari
+                            </div>
+                            <div style={{ backgroundColor: '#0d1117', padding: '6px 8px', borderRadius: '6px', borderLeft: '3px solid #f0883e' }}>
+                              <strong>Contoh 3</strong> - HEBOH! Tawuran Pelajar Pecah di Pasar Parung
+                            </div>
+                          </div>
+                        </div>
+                      )}
+
+                      {selectedHook === 'respond' && (
+                        <div style={{ fontSize: '11px', lineHeight: '1.5', color: '#c9d1d9' }}>
+                          <div style={{ fontWeight: '800', color: '#3fb950', marginBottom: '6px', fontSize: '12px' }}>Respond Warga: Stay Safe! + Respon Emosi Warga + Lokasi + Saat Ngerasain Fenomena</div>
+                          <div style={{ marginBottom: '8px', color: '#8b949e' }}>
+                            <div><strong style={{color: '#3fb950'}}>Respon Warga</strong> [ Warga Panik, Warga Syok, Warga Mengeluh, Warga Ngamuk, Warga Terjebak ]</div>
+                            <div style={{marginTop: '4px'}}><strong style={{color: '#3fb950'}}>Fenomena</strong> [ Kejadian/Peristiwa, ada apa sih? ]</div>
+                          </div>
+                          <div style={{ borderTop: '1px dashed #30363d', paddingTop: '8px', marginTop: '8px' }}>
+                            <div style={{ fontWeight: '700', color: '#e6edf3', marginBottom: '4px' }}>Contoh:</div>
+                            <div style={{ backgroundColor: '#0d1117', padding: '6px 8px', borderRadius: '6px', marginBottom: '6px', borderLeft: '3px solid #3fb950' }}>
+                              <strong>Contoh 1</strong> - Stay Safe! Warga Geram di Pasar Parung Saat Copet Merajalela di Jam Ramai
+                            </div>
+                            <div style={{ backgroundColor: '#0d1117', padding: '6px 8px', borderRadius: '6px', marginBottom: '6px', borderLeft: '3px solid #3fb950' }}>
+                              <strong>Contoh 2</strong> - Stay Safe! Warga Syok di Cibinong Saat Gempa 5.2 SR Guncang Saat Sahur
+                            </div>
+                            <div style={{ backgroundColor: '#0d1117', padding: '6px 8px', borderRadius: '6px', borderLeft: '3px solid #3fb950' }}>
+                              <strong>Contoh 3</strong> - Stay Safe! Warga Panik di Tajurhalang Saat Banjir Setinggi Dada Terjang Rumah Tengah Malam
+                            </div>
+                          </div>
+                        </div>
+                      )}
+
+                      {selectedHook === 'versus' && (
+                        <div style={{ fontSize: '11px', lineHeight: '1.5', color: '#c9d1d9' }}>
+                          <div style={{ fontWeight: '800', color: '#58a6ff', marginBottom: '6px', fontSize: '12px' }}>Versus: Hadapi Isu + Beda Respon Tokoh A & Tokoh B</div>
+                          <div style={{ borderTop: '1px dashed #30363d', paddingTop: '8px', marginTop: '8px' }}>
+                            <div style={{ fontWeight: '700', color: '#e6edf3', marginBottom: '4px' }}>Contoh:</div>
+                            <div style={{ backgroundColor: '#0d1117', padding: '6px 8px', borderRadius: '6px', marginBottom: '6px', borderLeft: '3px solid #58a6ff' }}>
+                              <strong>Contoh 1</strong> - Beda Cara Atasi Sampah Liar: Parung Pilih Denda Warga, Kemang Pilih Bikin Bank Sampah
+                            </div>
+                            <div style={{ backgroundColor: '#0d1117', padding: '6px 8px', borderRadius: '6px', marginBottom: '6px', borderLeft: '3px solid #58a6ff' }}>
+                              <strong>Contoh 2</strong> - Hadapi Macet Puncak yang Sama, Dishub Kota Buka Jalur Alternatif, Dishub Kabupaten Terapkan Buka Tutup
+                            </div>
+                            <div style={{ backgroundColor: '#0d1117', padding: '6px 8px', borderRadius: '6px', borderLeft: '3px solid #58a6ff' }}>
+                              <strong>Contoh 3</strong> - Satu Masalah Parkir Liar, Dua Pendekatan: Satpol PP Tegas Gembok, Ormas Tawarkan Jasa Kelola Resmi
+                            </div>
+                          </div>
+                        </div>
+                      )}
+
+                      {selectedHook === 'hoax' && (
+                        <div style={{ fontSize: '11px', lineHeight: '1.5', color: '#c9d1d9' }}>
+                          <div style={{ fontWeight: '800', color: '#f85149', marginBottom: '6px', fontSize: '12px' }}>HOAX: Mancing Geram/Iba + Pelaku + Melakukan sesuatu yang rugikan korban + Menggunakan HOAX</div>
+                          <div style={{ marginBottom: '8px', color: '#8b949e' }}>
+                            <div><strong style={{color: '#f85149'}}>Geram</strong> [ Keterlaluan! Kelewatan! Parah Banget! Tega Banget! Biadab! Licik! ]</div>
+                            <div style={{marginTop: '4px'}}><strong style={{color: '#f85149'}}>Iba / Empati</strong> [ Miris! Kasihan! Miris Banget! Ngenes! ]</div>
+                            <div style={{marginTop: '4px'}}><strong style={{color: '#f85149'}}>Kaget/Gak Masuk Akal</strong> [ Gak Habis Pikir! Gak Masuk Akal! Kok Bisa? Astaga! Gila Bener! ]</div>
+                          </div>
+                          <div style={{ borderTop: '1px dashed #30363d', paddingTop: '8px', marginTop: '8px' }}>
+                            <div style={{ fontWeight: '700', color: '#e6edf3', marginBottom: '4px' }}>Contoh:</div>
+                            <div style={{ backgroundColor: '#0d1117', padding: '6px 8px', borderRadius: '6px', marginBottom: '6px', borderLeft: '3px solid #f85149' }}>
+                              <strong>Contoh 1</strong> - Parah Banget! Akun Palsu Catut Nama Puskesmas Sebar Info Vaksin Berbayar Bikin Warga Panik
+                            </div>
+                            <div style={{ backgroundColor: '#0d1117', padding: '6px 8px', borderRadius: '6px', marginBottom: '6px', borderLeft: '3px solid #f85149' }}>
+                              <strong>Contoh 2</strong> - Keterlaluan! Pelaku Pinjol Ilegal Teror Keluarga Nasabah Pakai Foto Editan Syur Palsu
+                            </div>
+                            <div style={{ backgroundColor: '#0d1117', padding: '6px 8px', borderRadius: '6px', borderLeft: '3px solid #f85149' }}>
+                              <strong>Contoh 3</strong> - Miris! Oknum Kades Jual Tanah Kas Desa Pakai Sertifikat Palsu, Warga Kehilangan Lahan
+                            </div>
+                          </div>
+                        </div>
+                      )}
+                    </div>
                   </div>
                 </div>
 
