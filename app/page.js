@@ -6,10 +6,17 @@ export default function AgoraVadaPortal() {
   const [currentPage, setCurrentPage] = useState(1);
   const [urlBerita, setUrlBerita] = useState('');
   const [promptTeks, setPromptTeks] = useState('');
+  const [rawBeritaContent, setRawBeritaContent] = useState('');
+  const [promptMode, setPromptMode] = useState('homeless'); // 'homeless' | 'threads'
   
   const [judulHtml, setJudulHtml] = useState('');
   const [sumberBerita, setSumberBerita] = useState('');
   const [imageUrl, setImageUrl] = useState(''); 
+
+  const PROMPT_TEMPLATES = {
+    homeless: `Tolong buat 10 judul berita menggunakan hook dan copywriter handal untuk media alternatif "AgoraVada", serta buatkan caption untuk instagram, normatif saja dan informatif. Pastikan diakhiri oleh sumber berita dan 3 hastag (wajib ada #AgoraVada sisanya disesuaikan dengan kata kunci subjek dan topik yang dibahas).`,
+    threads: `Tolong identifikasi isu, paparkan fakta penting, berikan 10 perspektif 5 opini Pro dan 5 Opini Kontra untuk X atau Threads, Jika kontra boleh gunakan Bahasa satir, sarkas, tajam. Pastikan singkat singkat saja`
+  };
   
   const [isCopied, setIsCopied] = useState(false);
   
@@ -366,6 +373,77 @@ export default function AgoraVadaPortal() {
               >
                 {isCopied ? "✅ Tersalin!" : "📋 Copy Prompt"}
               </button>
+            </div>
+
+            {/* PILIHAN TEMPLATE PROMPT */}
+            <div style={{ display: 'flex', gap: '8px', marginBottom: '12px' }}>
+              <button
+                onClick={() => {
+                  setPromptMode('threads');
+                  if (rawBeritaContent) {
+                    setPromptTeks(`${PROMPT_TEMPLATES.threads}\n\n${rawBeritaContent}`);
+                  } else {
+                    // Kalau belum ada raw content, ganti preamble aja kalau ada
+                    const parts = promptTeks.split('\n\n');
+                    if (parts.length > 1) {
+                      setPromptTeks(`${PROMPT_TEMPLATES.threads}\n\n${parts.slice(1).join('\n\n')}`);
+                    } else {
+                      setPromptTeks(PROMPT_TEMPLATES.threads + (promptTeks ? '\n\n' + promptTeks : ''));
+                    }
+                  }
+                }}
+                style={{
+                  flex: 1,
+                  backgroundColor: promptMode === 'threads' ? '#1f6feb' : '#21262d',
+                  color: promptMode === 'threads' ? '#ffffff' : '#8b949e',
+                  padding: '10px 12px',
+                  borderRadius: '8px',
+                  fontSize: '12px',
+                  fontWeight: '700',
+                  border: promptMode === 'threads' ? '1px solid #388bfd' : '1px solid #30363d',
+                  cursor: 'pointer',
+                  transition: 'all 0.2s'
+                }}
+              >
+                🧵 Threads / X
+              </button>
+              <button
+                onClick={() => {
+                  setPromptMode('homeless');
+                  if (rawBeritaContent) {
+                    setPromptTeks(`${PROMPT_TEMPLATES.homeless}\n\n${rawBeritaContent}`);
+                  } else {
+                    const parts = promptTeks.split('\n\n');
+                    if (parts.length > 1) {
+                      setPromptTeks(`${PROMPT_TEMPLATES.homeless}\n\n${parts.slice(1).join('\n\n')}`);
+                    } else {
+                      setPromptTeks(PROMPT_TEMPLATES.homeless + (promptTeks ? '\n\n' + promptTeks : ''));
+                    }
+                  }
+                }}
+                style={{
+                  flex: 1,
+                  backgroundColor: promptMode === 'homeless' ? '#238636' : '#21262d',
+                  color: promptMode === 'homeless' ? '#ffffff' : '#8b949e',
+                  padding: '10px 12px',
+                  borderRadius: '8px',
+                  fontSize: '12px',
+                  fontWeight: '700',
+                  border: promptMode === 'homeless' ? '1px solid #2ea043' : '1px solid #30363d',
+                  cursor: 'pointer',
+                  transition: 'all 0.2s'
+                }}
+              >
+                🏚️ Homeless Media
+              </button>
+            </div>
+
+            <div style={{ backgroundColor: '#161b22', border: '1px dashed #30363d', padding: '8px 10px', borderRadius: '8px', marginBottom: '12px', fontSize: '11px', color: '#8b949e' }}>
+              {promptMode === 'threads' ? (
+                <span>Mode <strong style={{color: '#58a6ff'}}>Threads/X</strong>: Identifikasi isu, 10 perspektif Pro (5) Kontra (5) satir & tajam, singkat.</span>
+              ) : (
+                <span>Mode <strong style={{color: '#3fb950'}}>Homeless Media / AgoraVada</strong>: 10 judul hook + caption IG normatif + #AgoraVada.</span>
+              )}
             </div>
             
             <textarea 
