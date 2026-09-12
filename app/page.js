@@ -484,7 +484,7 @@ export default function AgoraVadaPortal() {
         {currentPage === 3 && (
           <div style={{ display: 'flex', flexDirection: 'column', gap: '24px' }}>
             
-            {            {/* BAGIAN ATAS: LIVE PREVIEW & UPLOAD */}
+            {/* BAGIAN ATAS: LIVE PREVIEW & UPLOAD */}
             <div style={{ backgroundColor: '#0d1117', border: '1px solid #30363d', borderRadius: '12px', padding: '20px', display: 'flex', flexDirection: 'column', gap: '20px' }}>
               
               <div style={{ display: 'flex', gap: '24px', alignItems: 'flex-start', justifyContent: 'center', flexWrap: 'wrap' }}>
