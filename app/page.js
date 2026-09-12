@@ -27,14 +27,14 @@ export default function AgoraVadaPortal() {
   const [isDragging, setIsDragging] = useState(false);
   const [dragStart, setDragStart] = useState({ x: 0, y: 0 });
 
-  const [teksX, setTeksX] = useState(140);
-  const [teksY, setTeksY] = useState(800);
-  const [ukuranFont, setUkuranFont] = useState(79);
+  const [teksX, setTeksX] = useState(110);
+  const [teksY, setTeksY] = useState(850);
+  const [ukuranFont, setUkuranFont] = useState(80);
   const [jarakBaris, setJarakBaris] = useState(1.4);
 
-  const [sumberX, setSumberX] = useState(145); 
-  const [sumberY, setSumberY] = useState(1243);
-  const [ukuranFontSumber, setUkuranFontSumber] = useState(28);
+  const [sumberX, setSumberX] = useState(110); 
+  const [sumberY, setSumberY] = useState(778);
+  const [ukuranFontSumber, setUkuranFontSumber] = useState(25);
 
   const canvasRef = useRef(null);
 
@@ -107,7 +107,7 @@ export default function AgoraVadaPortal() {
 
       if (!isCancelled) {
         setLoadedBgImg(null);
-        alert("Server website memblokir akses gambar ini. Silakan download gambarnya secara manual, lalu gunakan menu 'UPLOAD DARI PC/HP'.");
+        alert("Server website memblokir akses gambar ini. Silakan download gambarnya secara manual, lalu gunakan menu 'UPLOAD FOTO BERITA'.");
       }
     };
 
@@ -264,6 +264,29 @@ export default function AgoraVadaPortal() {
   const handleUploadFoto = (e) => {
     const file = e.target.files[0];
     if (file) setImageUrl(URL.createObjectURL(file));
+  };
+
+  const handleUploadTemplate = (e) => {
+    const file = e.target.files[0];
+    if (!file) return;
+    const img = new Image();
+    const objectUrl = URL.createObjectURL(file);
+    img.onload = () => {
+      // Validasi size 1080x1350
+      if (img.width !== 1080 || img.height !== 1350) {
+        const confirmUpload = confirm(`⚠️ Ukuran template ${img.width} x ${img.height}, bukan 1080 x 1350.\n\nSyarat ideal 1080x1350 biar pas di preview. Tetap pakai?`);
+        if (!confirmUpload) {
+          URL.revokeObjectURL(objectUrl);
+          return;
+        }
+      }
+      setTemplateImgObj(img);
+      // Simpan objectUrl juga biar gak hilang? Kita simpan img elementnya sudah cukup
+    };
+    img.onerror = () => {
+      alert('Gagal load template. Pastikan file gambar valid.');
+    };
+    img.src = objectUrl;
   };
 
   const downloadGambar = () => {
@@ -484,8 +507,28 @@ export default function AgoraVadaPortal() {
                 {/* BOARD GAMBAR (KANAN) + BASIC HOOK */}
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '12px', width: '300px', marginTop: '28px' }}>
                   <div style={{ backgroundColor: '#161b22', padding: '16px', borderRadius: '10px', border: '1px solid #30363d' }}>
-                    <label style={{ fontSize: '11px', fontWeight: '700', color: '#3fb950', display: 'block', marginBottom: '8px' }}>🖼️ UPLOAD DARI PC/HP</label>
+                    <label style={{ fontSize: '11px', fontWeight: '700', color: '#3fb950', display: 'block', marginBottom: '8px' }}>🖼️ UPLOAD FOTO BERITA</label>
                     <input type="file" accept="image/*" onChange={handleUploadFoto} style={{ fontSize: '11px', color: '#c9d1d9', width: '100%' }} />
+                  </div>
+
+                  <div style={{ backgroundColor: '#161b22', padding: '16px', borderRadius: '10px', border: '1px solid #f0883e' }}>
+                    <label style={{ fontSize: '11px', fontWeight: '700', color: '#f0883e', display: 'block', marginBottom: '6px' }}>🎨 UPLOAD MEDIA (Template)</label>
+                    <div style={{ fontSize: '10px', color: '#8b949e', marginBottom: '8px', lineHeight: '1.3' }}>
+                      Ganti template preview. Wajib ukuran <strong style={{color: '#f0883e'}}>1080 x 1350</strong> (IG Post).
+                    </div>
+                    <input type="file" accept="image/*" onChange={handleUploadTemplate} style={{ fontSize: '11px', color: '#c9d1d9', width: '100%' }} />
+                    <div style={{ display: 'flex', gap: '6px', marginTop: '10px' }}>
+                      <button
+                        onClick={() => {
+                          const tImg = new Image();
+                          tImg.src = '/Agora Vada Template.png';
+                          tImg.onload = () => setTemplateImgObj(tImg);
+                        }}
+                        style={{ flex: 1, backgroundColor: '#21262d', color: '#c9d1d9', padding: '6px', borderRadius: '6px', fontSize: '10px', border: '1px solid #30363d', cursor: 'pointer' }}
+                      >
+                        ↩️ Reset Template Default
+                      </button>
+                    </div>
                   </div>
 
                   {/* BASIC HOOK PANEL */}
@@ -689,7 +732,7 @@ export default function AgoraVadaPortal() {
                 <div style={{ backgroundColor: '#0d1117', padding: '12px 16px', borderRadius: '12px', border: '1px solid #30363d' }}>
                   <label style={{ fontSize: '11px', fontWeight: '700', color: '#f78166', display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px' }}>
                     <span>📍 KONTROL SUMBER BERITA</span>
-                    <button onClick={() => { setSumberX(145); setSumberY(1243); setUkuranFontSumber(28); }} style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: '14px', padding: 0 }} title="Kembalikan ke Setelan Awal">🔄</button>
+                    <button onClick={() => { setSumberX(110); setSumberY(778); setUkuranFontSumber(25); }} style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: '14px', padding: 0 }} title="Kembalikan ke Setelan Awal">🔄</button>
                   </label>
                   <div style={{ display: 'grid', gridTemplateColumns: '1fr', gap: '8px' }}>
                     <div>
@@ -737,7 +780,7 @@ export default function AgoraVadaPortal() {
                 <div style={{ backgroundColor: '#0d1117', padding: '12px 16px', borderRadius: '12px', border: '1px solid #30363d' }}>
                   <label style={{ fontSize: '11px', fontWeight: '700', color: '#a371f7', display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px' }}>
                     <span>✨ KONTROL POSISI JUDUL</span>
-                    <button onClick={() => { setTeksX(140); setTeksY(800); setUkuranFont(79); setJarakBaris(1.4); }} style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: '14px', padding: 0 }} title="Kembalikan ke Setelan Awal">🔄</button>
+                    <button onClick={() => { setTeksX(110); setTeksY(850); setUkuranFont(80); setJarakBaris(1.4); }} style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: '14px', padding: 0 }} title="Kembalikan ke Setelan Awal">🔄</button>
                   </label>
                   <div style={{ display: 'grid', gridTemplateColumns: '1fr', gap: '8px' }}>
                     <div>
