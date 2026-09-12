@@ -678,17 +678,16 @@ export default function AgoraVadaPortal() {
                   <div style={{ flex: 1, backgroundColor: '#0d1117', padding: '16px', borderRadius: '10px', border: '1px solid #21262d', minHeight: '300px' }}>
                     {selectedHook === 'urgent' && (
                       <div style={{ fontSize: '12px', lineHeight: '1.6', color: '#c9d1d9' }}>
-                        <div style={{ fontWeight: '800', color: '#f0883e', marginBottom: '8px', fontSize: '13px' }}>Bencana: Perintah! + Fenomena + Lokasi</div>
+                        <div style={{ fontWeight: '800', color: '#ffffff', marginBottom: '10px', fontSize: '13px' }}>Rumus : Perintah! + Fenomena + Lokasi</div>
                         <div style={{ marginBottom: '10px', color: '#8b949e', fontSize: '11px' }}>
-                          <div style={{ marginBottom: '6px', fontWeight: '700', color: '#e6edf3' }}>Rumus : Perintah! + Fenomena + Lokasi</div>
                           <div><strong style={{color: '#f0883e'}}>Kata Perintah</strong> [ Awas! Hati-Hati! Siaga! Waspada! Peringatan Dini! Bahaya! Darurat! Amankan! Hindari! Tetap Tenang! Jauhi! Stay Safe! - Pada intinya menyuruh orang lain melakukan sesuatu ]</div>
                           <div style={{marginTop: '6px'}}><strong style={{color: '#f0883e'}}>Fenomena</strong> : [ Kejadian/Peristiwa, Ada apa sih? ]</div>
                         </div>
                         <div style={{ borderTop: '1px dashed #30363d', paddingTop: '10px', marginTop: '10px' }}>
                           <div style={{ fontWeight: '700', color: '#e6edf3', marginBottom: '6px' }}>Contoh:</div>
-                          <div style={{ backgroundColor: '#161b22', padding: '8px 10px', borderRadius: '6px', marginBottom: '8px', borderLeft: '3px solid #f0883e' }}>HINDARI! Macet Total Lumpuhkan Tol Jagorawi</div>
-                          <div style={{ backgroundColor: '#161b22', padding: '8px 10px', borderRadius: '6px', marginBottom: '8px', borderLeft: '3px solid #f0883e' }}>AWAS! Begal Bersenjata Berkeliaran di Depok Malam Hari</div>
-                          <div style={{ backgroundColor: '#161b22', padding: '8px 10px', borderRadius: '6px', borderLeft: '3px solid #f0883e' }}>HEBOH! Tawuran Pelajar Pecah di Pasar Parung</div>
+                          <div style={{ backgroundColor: '#161b22', padding: '8px 10px', borderRadius: '6px', marginBottom: '8px', borderLeft: '3px solid #f0883e' }}>Waspada! Hujan Ekstrem di Jabodetabek</div>
+                          <div style={{ backgroundColor: '#161b22', padding: '8px 10px', borderRadius: '6px', marginBottom: '8px', borderLeft: '3px solid #f0883e' }}>Awas! Gelombang Tinggi di Pesisir Selatan Jawa</div>
+                          <div style={{ backgroundColor: '#161b22', padding: '8px 10px', borderRadius: '6px', borderLeft: '3px solid #f0883e' }}>Hindari! Jalur Rawan Longsor di Cisarua - Puncak</div>
                         </div>
                       </div>
                     )}
