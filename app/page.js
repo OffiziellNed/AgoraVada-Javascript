@@ -609,7 +609,7 @@ export default function AgoraVadaPortal() {
               </div>
             </div>
 
-            /* KONTROL BOARDS BAWAH */}
+            {/* KONTROL BOARDS BAWAH */}
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '20px' }}>
               
               {/* KOLOM KIRI */}
