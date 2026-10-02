@@ -265,10 +265,20 @@ export default function AgoraVadaPortal() {
       } else if (align === 'right') {
         currentX = x + (maxWidth - lineWidth);
       } else if (align === 'justify') {
-        // Justify: rata kiri kanan, kecuali baris terakhir atau baris 1 kata
+        // Justify yang rapi: jangan biarkan jarak terlalu lebar
         const isLastLine = lineIndex === lines.length - 1;
         if (!isLastLine && lineArr.length > 1) {
-          gapExtra = (maxWidth - lineWidth) / (lineArr.length - 1);
+          const rawExtra = (maxWidth - lineWidth) / (lineArr.length - 1);
+          // Batasi jarak tambahan biar tidak berjauhan seperti di screenshot
+          // Kalau rawExtra terlalu besar (> 25px atau > 2.5x spasi normal), jangan justify, fallback ke kiri
+          // Atau cap ke max 12px biar tetap rapat dan rapi
+          const maxAllowedExtra = Math.min(12, spaceWidth * 0.8); // max 12px atau 0.8x spasi
+          if (rawExtra > 28) {
+            // Terlalu renggang, lebih baik rata kiri biar rapi
+            gapExtra = 0;
+          } else {
+            gapExtra = Math.min(rawExtra, maxAllowedExtra);
+          }
         }
       }
 
