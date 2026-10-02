@@ -205,13 +205,43 @@ export default function AgoraVadaPortal() {
         ctx.font = `${baseFontSize}px ${fontName}, sans-serif`;
         let wWidth = ctx.measureText(item.word).width;
         
-        if (currentWidth + wWidth > maxWidth && currentLine.length > 0) {
-          lines.push(currentLine);
-          currentLine = [item];
-          currentWidth = wWidth + spaceWidth;
+        // Jika 1 kata panjang melebihi maxWidth (misal tanpa spasi), pecah per karakter
+        if (wWidth > maxWidth) {
+          let remaining = item.word;
+          while (remaining.length > 0) {
+            let chunk = '';
+            for (let i = 1; i <= remaining.length; i++) {
+              const test = remaining.slice(0, i);
+              if (ctx.measureText(test).width > maxWidth) break;
+              chunk = test;
+            }
+            if (!chunk) chunk = remaining.slice(0, 1); // fallback 1 char
+            const chunkItem = { ...item, word: chunk };
+            const chunkWidth = ctx.measureText(chunk).width;
+            if (currentWidth + chunkWidth > maxWidth && currentLine.length > 0) {
+              lines.push(currentLine);
+              currentLine = [chunkItem];
+              currentWidth = chunkWidth + spaceWidth;
+            } else {
+              currentLine.push(chunkItem);
+              currentWidth += chunkWidth + spaceWidth;
+            }
+            remaining = remaining.slice(chunk.length);
+            if (remaining.length > 0) {
+              lines.push(currentLine);
+              currentLine = [];
+              currentWidth = 0;
+            }
+          }
         } else {
-          currentLine.push(item);
-          currentWidth += wWidth + spaceWidth;
+          if (currentWidth + wWidth > maxWidth && currentLine.length > 0) {
+            lines.push(currentLine);
+            currentLine = [item];
+            currentWidth = wWidth + spaceWidth;
+          } else {
+            currentLine.push(item);
+            currentWidth += wWidth + spaceWidth;
+          }
         }
       }
     });
@@ -269,13 +299,31 @@ export default function AgoraVadaPortal() {
       ctx.drawImage(templateImgObj, 0, 0, canvas.width, canvas.height);
     }
 
-    // Visual guide untuk margin 1.5cm (MARGIN_PX) - garis bantu tipis
+    // Visual guide untuk margin 1.5cm (MARGIN_PX) - garis bantu JELAS
     ctx.save();
-    ctx.strokeStyle = 'rgba(255,255,255,0.15)';
-    ctx.setLineDash([6, 6]);
-    ctx.lineWidth = 1;
-    // Kotak margin
+    ctx.strokeStyle = 'rgba(231, 232, 32, 0.7)'; // Kuning Agora Vada biar keliatan
+    ctx.setLineDash([12, 8]);
+    ctx.lineWidth = 2;
+    // Kotak margin 1.5cm dari semua sisi
     ctx.strokeRect(MARGIN_PX, MARGIN_PX, canvas.width - MARGIN_PX*2, canvas.height - MARGIN_PX*2);
+    
+    // Garis kiri tebal sebagai penanda 1.5cm dari kiri
+    ctx.strokeStyle = 'rgba(248, 136, 62, 0.9)';
+    ctx.setLineDash([]);
+    ctx.lineWidth = 2;
+    ctx.beginPath();
+    ctx.moveTo(MARGIN_PX, MARGIN_PX);
+    ctx.lineTo(MARGIN_PX, canvas.height - MARGIN_PX);
+    ctx.stroke();
+    
+    // Label margin
+    ctx.fillStyle = 'rgba(231, 232, 32, 0.9)';
+    ctx.font = '18px sans-serif';
+    ctx.textAlign = 'left';
+    ctx.fillText('← 1.5cm', MARGIN_PX + 6, MARGIN_PX + 20);
+    ctx.textAlign = 'right';
+    ctx.fillText('1.5cm →', canvas.width - MARGIN_PX - 6, MARGIN_PX + 20);
+    
     ctx.restore();
 
 
@@ -785,12 +833,12 @@ export default function AgoraVadaPortal() {
                       <input type="range" min="30" max="400" step="1" value={ukuranFont} onChange={(e) => setUkuranFont(parseInt(e.target.value))} style={{ width: '100%', accentColor: '#a371f7' }} />
                     </div>
                     <div>
-                      <span style={{ fontSize: '10px', color: '#8b949e', display: 'flex', justifyContent: 'space-between' }}><span>Geser X</span> <span>{teksX}</span></span>
-                      <input type="range" min="-500" max="1080" step="1" value={teksX} onChange={(e) => setTeksX(parseInt(e.target.value))} style={{ width: '100%', accentColor: '#a371f7' }} />
+                      <span style={{ fontSize: '10px', color: '#8b949e', display: 'flex', justifyContent: 'space-between' }}><span>Geser X (Min {MARGIN_PX}px = 1.5cm)</span> <span>{teksX}</span></span>
+                      <input type="range" min={MARGIN_PX} max={1080 - MARGIN_PX - 100} step="1" value={teksX} onChange={(e) => setTeksX(parseInt(e.target.value))} style={{ width: '100%', accentColor: '#a371f7' }} />
                     </div>
                     <div>
-                      <span style={{ fontSize: '10px', color: '#8b949e', display: 'flex', justifyContent: 'space-between' }}><span>Geser Y (Atas/Bawah)</span> <span>{teksY}</span></span>
-                      <input type="range" min="-500" max="2000" step="1" value={teksY} onChange={(e) => setTeksY(parseInt(e.target.value))} style={{ width: '100%', accentColor: '#a371f7' }} />
+                      <span style={{ fontSize: '10px', color: '#8b949e', display: 'flex', justifyContent: 'space-between' }}><span>Geser Y (Atas/Bawah - Min {MARGIN_PX}px)</span> <span>{teksY}</span></span>
+                      <input type="range" min={MARGIN_PX} max={1350 - MARGIN_PX - 100} step="1" value={teksY} onChange={(e) => setTeksY(parseInt(e.target.value))} style={{ width: '100%', accentColor: '#a371f7' }} />
                     </div>
                     <div style={{ marginTop: '4px', paddingTop: '8px', borderTop: '1px dashed #30363d' }}>
                       <span style={{ fontSize: '10px', color: '#8b949e', display: 'flex', justifyContent: 'space-between' }}><span>Jarak Antar Kalimat</span> <span>{jarakBaris}</span></span>
