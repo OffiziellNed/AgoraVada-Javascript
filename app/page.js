@@ -278,12 +278,8 @@ export default function AgoraVadaPortal() {
     });
   };
 
-  useEffect(() => {
-    if (currentPage !== 3) return;
-    const canvas = canvasRef.current;
-    if (!canvas) return;
-    const ctx = canvas.getContext('2d');
-
+  // Fungsi render utama, bisa dipanggil dengan atau tanpa garis margin
+  const renderCanvas = (ctx, canvas, showMarginGuide = true) => {
     ctx.fillStyle = '#111827';
     ctx.fillRect(0, 0, canvas.width, canvas.height);
 
@@ -299,36 +295,18 @@ export default function AgoraVadaPortal() {
       ctx.drawImage(templateImgObj, 0, 0, canvas.width, canvas.height);
     }
 
-    // Visual guide untuk margin 1.5cm (MARGIN_PX) - garis bantu JELAS
-    ctx.save();
-    ctx.strokeStyle = 'rgba(231, 232, 32, 0.7)'; // Kuning Agora Vada biar keliatan
-    ctx.setLineDash([12, 8]);
-    ctx.lineWidth = 2;
-    // Kotak margin 1.5cm dari semua sisi
-    ctx.strokeRect(MARGIN_PX, MARGIN_PX, canvas.width - MARGIN_PX*2, canvas.height - MARGIN_PX*2);
-    
-    // Garis kiri tebal sebagai penanda 1.5cm dari kiri
-    ctx.strokeStyle = 'rgba(248, 136, 62, 0.9)';
-    ctx.setLineDash([]);
-    ctx.lineWidth = 2;
-    ctx.beginPath();
-    ctx.moveTo(MARGIN_PX, MARGIN_PX);
-    ctx.lineTo(MARGIN_PX, canvas.height - MARGIN_PX);
-    ctx.stroke();
-    
-    // Label margin
-    ctx.fillStyle = 'rgba(231, 232, 32, 0.9)';
-    ctx.font = '18px sans-serif';
-    ctx.textAlign = 'left';
-    ctx.fillText('← 1.5cm', MARGIN_PX + 6, MARGIN_PX + 20);
-    ctx.textAlign = 'right';
-    ctx.fillText('1.5cm →', canvas.width - MARGIN_PX - 6, MARGIN_PX + 20);
-    
-    ctx.restore();
-
+    // Visual guide untuk margin 1.5cm - HANYA di preview, tidak ikut di download
+    if (showMarginGuide) {
+      ctx.save();
+      ctx.strokeStyle = 'rgba(139, 148, 158, 0.5)'; // Abu garis putus-putus
+      ctx.setLineDash([10, 8]);
+      ctx.lineWidth = 1.5;
+      ctx.strokeRect(MARGIN_PX, MARGIN_PX, canvas.width - MARGIN_PX*2, canvas.height - MARGIN_PX*2);
+      ctx.restore();
+    }
 
     const lh = ukuranFont * jarakBaris;
-    // Batasi wilayah tulis 1.5cm dari kiri dan frame (MARGIN_PX)
+    // Batasi wilayah tulis 1.5cm dari kiri dan frame
     const clampedX = Math.max(MARGIN_PX, Math.min(teksX, 1080 - MARGIN_PX - 100));
     const clampedY = Math.max(MARGIN_PX, Math.min(teksY, 1350 - MARGIN_PX - 100));
     const availableWidth = 1080 - clampedX - MARGIN_PX;
@@ -343,8 +321,15 @@ export default function AgoraVadaPortal() {
       ctx.textBaseline = 'top';
       ctx.fillText(sumberBerita, sumberX, sumberY);
     }
+  };
 
-  }, [currentPage, loadedBgImg, templateImgObj, imgX, imgY, imgScale, teksX, teksY, ukuranFont, jarakBaris, sumberX, sumberY, ukuranFontSumber, judulHtml, sumberBerita]);
+  useEffect(() => {
+    if (currentPage !== 3) return;
+    const canvas = canvasRef.current;
+    if (!canvas) return;
+    const ctx = canvas.getContext('2d');
+    renderCanvas(ctx, canvas, true); // preview dengan garis abu
+  }, [currentPage, loadedBgImg, templateImgObj, imgX, imgY, imgScale, teksX, teksY, ukuranFont, jarakBaris, sumberX, sumberY, ukuranFontSumber, judulHtml, sumberBerita, sumberColor, templateMode, teksAlign]);
 
 
   const handleMouseDown = (e) => {
@@ -396,12 +381,19 @@ export default function AgoraVadaPortal() {
 
   const downloadGambar = () => {
     const canvas = canvasRef.current;
-    if (canvas) {
-      const link = document.createElement('a');
-      link.download = 'AgoraVada_Post.jpg';
-      link.href = canvas.toDataURL("image/jpeg", 0.95);
-      link.click();
-    }
+    if (!canvas) return;
+    const ctx = canvas.getContext('2d');
+    // Render tanpa garis margin untuk hasil final
+    renderCanvas(ctx, canvas, false);
+    const link = document.createElement('a');
+    link.download = templateMode === 'agentlondo' ? 'AgentLondo_Post.jpg' : 'AgoraVada_Post.jpg';
+    link.href = canvas.toDataURL("image/jpeg", 0.95);
+    link.click();
+    // Balikin lagi preview dengan garis abu
+    setTimeout(() => {
+      const ctx2 = canvas.getContext('2d');
+      renderCanvas(ctx2, canvas, true);
+    }, 100);
   };
 
   const handleCopyPrompt = () => {
@@ -752,7 +744,27 @@ export default function AgoraVadaPortal() {
                     id="judul-editor"
                     contentEditable
                     onInput={(e) => setJudulHtml(e.currentTarget.innerHTML)}
-                    style={{ width: '100%', backgroundColor: '#161b22', border: '1px solid #30363d', color: '#ffffff', padding: '12px', borderRadius: '8px', fontSize: '14px', minHeight: '110px', outline: 'none', boxSizing: 'border-box', overflowY: 'auto', lineHeight: '1.5' }}
+                    style={{ 
+                      width: '100%', 
+                      maxWidth: '100%',
+                      backgroundColor: '#161b22', 
+                      border: '1px solid #30363d', 
+                      color: '#ffffff', 
+                      padding: '12px', 
+                      borderRadius: '8px', 
+                      fontSize: '14px', 
+                      minHeight: '110px', 
+                      maxHeight: '280px',
+                      outline: 'none', 
+                      boxSizing: 'border-box', 
+                      overflowY: 'auto',
+                      overflowX: 'hidden',
+                      lineHeight: '1.5',
+                      whiteSpace: 'pre-wrap',
+                      wordBreak: 'break-all',
+                      overflowWrap: 'anywhere',
+                      textAlign: teksAlign
+                    }}
                   />
                 </div>
 
