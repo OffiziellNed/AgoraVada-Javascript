@@ -248,7 +248,7 @@ export default function AgoraVadaPortal() {
     if (currentLine.length > 0) lines.push(currentLine);
 
     let currentY = y;
-    lines.forEach(lineArr => {
+    lines.forEach((lineArr, lineIndex) => {
       // Hitung total width line untuk alignment
       let lineWidth = 0;
       lineArr.forEach((item, idx) => {
@@ -259,20 +259,26 @@ export default function AgoraVadaPortal() {
       });
 
       let currentX = x;
+      let gapExtra = 0;
       if (align === 'center') {
         currentX = x + (maxWidth - lineWidth) / 2;
       } else if (align === 'right') {
         currentX = x + (maxWidth - lineWidth);
+      } else if (align === 'justify') {
+        // Justify: rata kiri kanan, kecuali baris terakhir atau baris 1 kata
+        const isLastLine = lineIndex === lines.length - 1;
+        if (!isLastLine && lineArr.length > 1) {
+          gapExtra = (maxWidth - lineWidth) / (lineArr.length - 1);
+        }
       }
-      // left tetap di x
 
-      lineArr.forEach(item => {
+      lineArr.forEach((item, idx) => {
         const fontName = item.isItalic ? italicFontFamily : baseFontFamily;
         ctx.font = `${baseFontSize}px ${fontName}, sans-serif`;
         ctx.fillStyle = item.color;
-        ctx.textAlign = 'left'; // kita manual align via currentX
+        ctx.textAlign = 'left';
         ctx.fillText(item.word, currentX, currentY);
-        currentX += ctx.measureText(item.word).width + spaceWidth;
+        currentX += ctx.measureText(item.word).width + spaceWidth + gapExtra;
       });
       currentY += lineHeight;
     });
@@ -738,6 +744,7 @@ export default function AgoraVadaPortal() {
                     <button onClick={() => setTeksAlign('left')} style={{ backgroundColor: teksAlign === 'left' ? '#a371f7' : '#21262d', color: teksAlign === 'left' ? '#fff' : '#c9d1d9', padding: '6px 8px', borderRadius: '6px', fontSize: '12px', cursor: 'pointer', border: teksAlign === 'left' ? '1px solid #a371f7' : '1px solid #30363d' }} title="Rata Kiri">☰</button>
                     <button onClick={() => setTeksAlign('center')} style={{ backgroundColor: teksAlign === 'center' ? '#a371f7' : '#21262d', color: teksAlign === 'center' ? '#fff' : '#c9d1d9', padding: '6px 8px', borderRadius: '6px', fontSize: '12px', cursor: 'pointer', border: teksAlign === 'center' ? '1px solid #a371f7' : '1px solid #30363d' }} title="Rata Tengah">≡</button>
                     <button onClick={() => setTeksAlign('right')} style={{ backgroundColor: teksAlign === 'right' ? '#a371f7' : '#21262d', color: teksAlign === 'right' ? '#fff' : '#c9d1d9', padding: '6px 8px', borderRadius: '6px', fontSize: '12px', cursor: 'pointer', border: teksAlign === 'right' ? '1px solid #a371f7' : '1px solid #30363d' }} title="Rata Kanan">☰</button>
+                    <button onClick={() => setTeksAlign('justify')} style={{ backgroundColor: teksAlign === 'justify' ? '#a371f7' : '#21262d', color: teksAlign === 'justify' ? '#fff' : '#c9d1d9', padding: '6px 8px', borderRadius: '6px', fontSize: '12px', cursor: 'pointer', border: teksAlign === 'justify' ? '1px solid #a371f7' : '1px solid #30363d' }} title="Justify - Rata Kiri Kanan">≣</button>
                   </div>
 
                   <div 
