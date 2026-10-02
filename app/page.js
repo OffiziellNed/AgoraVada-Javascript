@@ -36,6 +36,7 @@ export default function AgoraVadaPortal() {
   const [sumberY, setSumberY] = useState(778);
   const [ukuranFontSumber, setUkuranFontSumber] = useState(25);
   const [sumberColor, setSumberColor] = useState('#FFFFFF');
+  const [templateMode, setTemplateMode] = useState('agoravada'); // 'agoravada' | 'agentlondo'
 
   const canvasRef = useRef(null);
 
@@ -46,6 +47,7 @@ export default function AgoraVadaPortal() {
   useEffect(() => {
     const loadFonts = async () => {
       try {
+        // Poppins - Agora Vada
         const fontSB = new FontFace('PoppinsSemiBold', 'url(/Poppins-SemiBold.ttf)');
         await fontSB.load();
         document.fonts.add(fontSB);
@@ -55,6 +57,18 @@ export default function AgoraVadaPortal() {
         document.fonts.add(fontSBI);
       } catch (err) {
         console.warn("Font Poppins gagal di-load. Pastikan file ada di folder public.");
+      }
+      try {
+        // IBM Plex Mono - Agent Londo
+        const fontIBM = new FontFace('IBMPlexMono-SemiBold', 'url(/IBMPlexMono-SemiBold.ttf)');
+        await fontIBM.load();
+        document.fonts.add(fontIBM);
+
+        const fontIBMI = new FontFace('IBMPlexMono-SemiBoldItalic', 'url(/IBMPlexMono-SemiBoldItalic.ttf)');
+        await fontIBMI.load();
+        document.fonts.add(fontIBMI);
+      } catch (err) {
+        console.warn("Font IBM Plex Mono gagal di-load. Pastikan file IBMPlexMono-SemiBold.ttf ada di public.");
       }
     };
     loadFonts();
@@ -167,7 +181,11 @@ export default function AgoraVadaPortal() {
     let currentLine = [];
     let currentWidth = 0;
     
-    ctx.font = `${baseFontSize}px PoppinsSemiBold, sans-serif`;
+    // Pilih font family berdasarkan templateMode
+    const baseFontFamily = templateMode === 'agentlondo' ? 'IBMPlexMono-SemiBold' : 'PoppinsSemiBold';
+    const italicFontFamily = templateMode === 'agentlondo' ? 'IBMPlexMono-SemiBoldItalic' : 'PoppinsSemiBoldItalic';
+    
+    ctx.font = `${baseFontSize}px ${baseFontFamily}, sans-serif`;
     const spaceWidth = ctx.measureText(' ').width;
 
     wordsWithContext.forEach(item => {
@@ -176,7 +194,7 @@ export default function AgoraVadaPortal() {
         currentLine = [];
         currentWidth = 0;
       } else {
-        const fontName = item.isItalic ? 'PoppinsSemiBoldItalic' : 'PoppinsSemiBold';
+        const fontName = item.isItalic ? italicFontFamily : baseFontFamily;
         ctx.font = `${baseFontSize}px ${fontName}, sans-serif`;
         let wWidth = ctx.measureText(item.word).width;
         
@@ -196,7 +214,7 @@ export default function AgoraVadaPortal() {
     lines.forEach(lineArr => {
       let currentX = x;
       lineArr.forEach(item => {
-        const fontName = item.isItalic ? 'PoppinsSemiBoldItalic' : 'PoppinsSemiBold';
+        const fontName = item.isItalic ? italicFontFamily : baseFontFamily;
         ctx.font = `${baseFontSize}px ${fontName}, sans-serif`;
         ctx.fillStyle = item.color;
         ctx.fillText(item.word, currentX, currentY);
@@ -232,7 +250,8 @@ export default function AgoraVadaPortal() {
 
     if (sumberBerita) {
       ctx.fillStyle = sumberColor || '#FFFFFF';
-      ctx.font = `${ukuranFontSumber}px PoppinsSemiBoldItalic, sans-serif`;
+      const sumberFont = templateMode === 'agentlondo' ? 'IBMPlexMono-SemiBoldItalic' : 'PoppinsSemiBoldItalic';
+      ctx.font = `${ukuranFontSumber}px ${sumberFont}, sans-serif`;
       ctx.textAlign = 'left';
       ctx.textBaseline = 'top';
       ctx.fillText(sumberBerita, sumberX, sumberY);
@@ -516,17 +535,87 @@ export default function AgoraVadaPortal() {
                       Ganti template preview. Wajib ukuran <strong style={{color: '#f0883e'}}>1080 x 1350</strong> (IG Post).
                     </div>
                     <input type="file" accept="image/*" onChange={handleUploadTemplate} style={{ fontSize: '11px', color: '#c9d1d9', width: '100%' }} />
-                    <div style={{ display: 'flex', gap: '6px', marginTop: '10px' }}>
+                    
+                    {/* MENU TEMPLATE AGORA VADA & AGENT LONDO */}
+                    <div style={{ display: 'flex', gap: '6px', marginTop: '12px' }}>
                       <button
                         onClick={() => {
+                          setTemplateMode('agoravada');
                           const tImg = new Image();
                           tImg.src = '/Agora Vada Template.png';
                           tImg.onload = () => setTemplateImgObj(tImg);
+                          tImg.onerror = () => alert('Gagal load Agora Vada Template.png - pastikan file ada di public/');
                         }}
-                        style={{ flex: 1, backgroundColor: '#21262d', color: '#c9d1d9', padding: '6px', borderRadius: '6px', fontSize: '10px', border: '1px solid #30363d', cursor: 'pointer' }}
+                        style={{
+                          flex: 1,
+                          backgroundColor: templateMode === 'agoravada' ? '#f0883e' : '#21262d',
+                          color: templateMode === 'agoravada' ? '#000' : '#c9d1d9',
+                          padding: '8px 6px',
+                          borderRadius: '6px',
+                          fontSize: '10px',
+                          fontWeight: '700',
+                          border: templateMode === 'agoravada' ? '1px solid #f0883e' : '1px solid #30363d',
+                          cursor: 'pointer'
+                        }}
                       >
-                        ↩️ Reset Template Default
+                        🏚️ Agora Vada
                       </button>
+                      <button
+                        onClick={() => {
+                          setTemplateMode('agentlondo');
+                          const tryLoadAgentLondo = (urls, index = 0) => {
+                            if (index >= urls.length) {
+                              alert('Gagal load template Agent Londo. Pastikan file AgentLondo.png atau Agent Londo Template.png ada di public/');
+                              return;
+                            }
+                            const tImg = new Image();
+                            tImg.onload = () => setTemplateImgObj(tImg);
+                            tImg.onerror = () => tryLoadAgentLondo(urls, index + 1);
+                            tImg.src = urls[index];
+                          };
+                          tryLoadAgentLondo(['/AgentLondo.png', '/Agent Londo.png', '/AgentLondo Template.png', '/Agent Londo Template.png', '/AgentLondoTemplate.png']);
+                        }}
+                        style={{
+                          flex: 1,
+                          backgroundColor: templateMode === 'agentlondo' ? '#58a6ff' : '#21262d',
+                          color: templateMode === 'agentlondo' ? '#fff' : '#c9d1d9',
+                          padding: '8px 6px',
+                          borderRadius: '6px',
+                          fontSize: '10px',
+                          fontWeight: '700',
+                          border: templateMode === 'agentlondo' ? '1px solid #58a6ff' : '1px solid #30363d',
+                          cursor: 'pointer'
+                        }}
+                      >
+                        🕵️ Agent Londo
+                      </button>
+                    </div>
+
+                    <div style={{ display: 'flex', gap: '6px', marginTop: '8px' }}>
+                      <button
+                        onClick={() => {
+                          const tImg = new Image();
+                          tImg.src = templateMode === 'agentlondo' ? '/AgentLondo.png' : '/Agora Vada Template.png';
+                          tImg.onload = () => setTemplateImgObj(tImg);
+                          // Fallback
+                          tImg.onerror = () => {
+                            const fallback = new Image();
+                            fallback.src = '/Agora Vada Template.png';
+                            fallback.onload = () => setTemplateImgObj(fallback);
+                          };
+                        }}
+                        style={{ flex: 1, backgroundColor: '#21262d', color: '#8b949e', padding: '6px', borderRadius: '6px', fontSize: '9px', border: '1px dashed #30363d', cursor: 'pointer' }}
+                      >
+                        ↩️ Reset {templateMode === 'agentlondo' ? 'Agent Londo' : 'Agora Vada'}
+                      </button>
+                    </div>
+
+                    <div style={{ fontSize: '9px', color: '#6e7681', marginTop: '8px', lineHeight: '1.3', backgroundColor: '#0d1117', padding: '6px 8px', borderRadius: '6px' }}>
+                      {templateMode === 'agentlondo' ? (
+                        <span>🕵️ Mode <strong style={{color: '#58a6ff'}}>Agent Londo</strong>: Font IBMPlexMono-SemiBold + Italic</span>
+                      ) : (
+                        <span>🏚️ Mode <strong style={{color: '#f0883e'}}>Agora Vada</strong>: Font Poppins SemiBold + Italic</span>
+                      )}
                     </div>
                   </div>
                 </div>
