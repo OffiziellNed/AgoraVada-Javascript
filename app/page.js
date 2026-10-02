@@ -37,6 +37,14 @@ export default function AgoraVadaPortal() {
   const [ukuranFontSumber, setUkuranFontSumber] = useState(25);
   const [sumberColor, setSumberColor] = useState('#FFFFFF');
   const [templateMode, setTemplateMode] = useState('agoravada'); // 'agoravada' | 'agentlondo'
+  const [teksAlign, setTeksAlign] = useState('left'); // 'left' | 'center' | 'right'
+
+  // 1.5 cm margin = ~57px at 96dpi, kita pakai 85px biar aman di 1080px canvas
+  const MARGIN_PX = 85;
+  const TEMPLATE_DEFAULTS = {
+    agoravada: { teksX: 110, teksY: 850, ukuranFont: 80, jarakBaris: 1.4, sumberX: 110, sumberY: 778, ukuranFontSumber: 25 },
+    agentlondo: { teksX: 110, teksY: 593, ukuranFont: 45, jarakBaris: 1.4, sumberX: 110, sumberY: 700, ukuranFontSumber: 20 }
+  };
 
   const canvasRef = useRef(null);
 
@@ -137,9 +145,8 @@ export default function AgoraVadaPortal() {
     if (editor) setJudulHtml(editor.innerHTML);
   };
 
-  const renderRichText = (ctx, htmlString, x, y, maxWidth, lineHeight, baseFontSize) => {
+  const renderRichText = (ctx, htmlString, x, y, maxWidth, lineHeight, baseFontSize, align = 'left') => {
     if (!htmlString) return; 
-    ctx.textAlign = 'left'; 
     ctx.textBaseline = 'top'; 
 
     const cleanHTML = htmlString
@@ -212,11 +219,28 @@ export default function AgoraVadaPortal() {
 
     let currentY = y;
     lines.forEach(lineArr => {
+      // Hitung total width line untuk alignment
+      let lineWidth = 0;
+      lineArr.forEach((item, idx) => {
+        const fontName = item.isItalic ? italicFontFamily : baseFontFamily;
+        ctx.font = `${baseFontSize}px ${fontName}, sans-serif`;
+        lineWidth += ctx.measureText(item.word).width;
+        if (idx < lineArr.length - 1) lineWidth += spaceWidth;
+      });
+
       let currentX = x;
+      if (align === 'center') {
+        currentX = x + (maxWidth - lineWidth) / 2;
+      } else if (align === 'right') {
+        currentX = x + (maxWidth - lineWidth);
+      }
+      // left tetap di x
+
       lineArr.forEach(item => {
         const fontName = item.isItalic ? italicFontFamily : baseFontFamily;
         ctx.font = `${baseFontSize}px ${fontName}, sans-serif`;
         ctx.fillStyle = item.color;
+        ctx.textAlign = 'left'; // kita manual align via currentX
         ctx.fillText(item.word, currentX, currentY);
         currentX += ctx.measureText(item.word).width + spaceWidth;
       });
@@ -245,8 +269,23 @@ export default function AgoraVadaPortal() {
       ctx.drawImage(templateImgObj, 0, 0, canvas.width, canvas.height);
     }
 
+    // Visual guide untuk margin 1.5cm (MARGIN_PX) - garis bantu tipis
+    ctx.save();
+    ctx.strokeStyle = 'rgba(255,255,255,0.15)';
+    ctx.setLineDash([6, 6]);
+    ctx.lineWidth = 1;
+    // Kotak margin
+    ctx.strokeRect(MARGIN_PX, MARGIN_PX, canvas.width - MARGIN_PX*2, canvas.height - MARGIN_PX*2);
+    ctx.restore();
+
+
     const lh = ukuranFont * jarakBaris;
-    renderRichText(ctx, judulHtml, teksX, teksY, 950, lh, ukuranFont);
+    // Batasi wilayah tulis 1.5cm dari kiri dan frame (MARGIN_PX)
+    const clampedX = Math.max(MARGIN_PX, Math.min(teksX, 1080 - MARGIN_PX - 100));
+    const clampedY = Math.max(MARGIN_PX, Math.min(teksY, 1350 - MARGIN_PX - 100));
+    const availableWidth = 1080 - clampedX - MARGIN_PX;
+    const safeMaxWidth = Math.max(100, Math.min(950, availableWidth));
+    renderRichText(ctx, judulHtml, clampedX, clampedY, safeMaxWidth, lh, ukuranFont, teksAlign);
 
     if (sumberBerita) {
       ctx.fillStyle = sumberColor || '#FFFFFF';
@@ -541,6 +580,14 @@ export default function AgoraVadaPortal() {
                       <button
                         onClick={() => {
                           setTemplateMode('agoravada');
+                          const def = TEMPLATE_DEFAULTS.agoravada;
+                          setTeksX(def.teksX);
+                          setTeksY(def.teksY);
+                          setUkuranFont(def.ukuranFont);
+                          setJarakBaris(def.jarakBaris);
+                          setSumberX(def.sumberX);
+                          setSumberY(def.sumberY);
+                          setUkuranFontSumber(def.ukuranFontSumber);
                           const tImg = new Image();
                           tImg.src = '/Agora Vada Template.png';
                           tImg.onload = () => setTemplateImgObj(tImg);
@@ -563,6 +610,14 @@ export default function AgoraVadaPortal() {
                       <button
                         onClick={() => {
                           setTemplateMode('agentlondo');
+                          const def = TEMPLATE_DEFAULTS.agentlondo;
+                          setTeksX(def.teksX);
+                          setTeksY(def.teksY);
+                          setUkuranFont(def.ukuranFont);
+                          setJarakBaris(def.jarakBaris);
+                          setSumberX(def.sumberX);
+                          setSumberY(def.sumberY);
+                          setUkuranFontSumber(def.ukuranFontSumber);
                           const tryLoadAgentLondo = (urls, index = 0) => {
                             if (index >= urls.length) {
                               alert('Gagal load template Agent Londo. Pastikan file AgentLondo.png atau Agent Londo Template.png ada di public/');
@@ -633,11 +688,16 @@ export default function AgoraVadaPortal() {
                 <div style={{ backgroundColor: '#0d1117', padding: '16px', borderRadius: '12px', border: '1px solid #30363d' }}>
                   <label style={{ fontSize: '11px', fontWeight: '700', color: '#a371f7', display: 'block', marginBottom: '10px', letterSpacing: '1px' }}>📝 EDIT JUDUL</label>
                   
-                  <div style={{ display: 'flex', gap: '8px', marginBottom: '10px', alignItems: 'center' }}>
+                  <div style={{ display: 'flex', gap: '8px', marginBottom: '10px', alignItems: 'center', flexWrap: 'wrap' }}>
                     <button onClick={() => handleFormat('foreColor', '#E7E820')} style={{ backgroundColor: '#E7E820', color: '#000', padding: '6px 12px', borderRadius: '6px', fontSize: '11px', fontWeight: 'bold', cursor: 'pointer', border: 'none' }}>Kuning</button>
                     <button onClick={() => handleFormat('italic')} style={{ backgroundColor: '#21262d', color: '#fff', padding: '6px 14px', borderRadius: '6px', fontSize: '12px', fontWeight: 'bold', fontStyle: 'italic', cursor: 'pointer', border: '1px solid #30363d' }}>I</button>
                     <div style={{ width: '1px', height: '16px', backgroundColor: '#30363d', margin: '0 4px' }}></div>
                     <button onClick={() => handleFormat('foreColor', '#ffffff')} style={{ backgroundColor: 'transparent', color: '#c9d1d9', padding: '6px 10px', borderRadius: '6px', fontSize: '10px', cursor: 'pointer', border: '1px solid #30363d' }}>Teks Dasar</button>
+                    <div style={{ width: '1px', height: '16px', backgroundColor: '#30363d', margin: '0 4px' }}></div>
+                    {/* ALIGNMENT ICONS */}
+                    <button onClick={() => setTeksAlign('left')} style={{ backgroundColor: teksAlign === 'left' ? '#a371f7' : '#21262d', color: teksAlign === 'left' ? '#fff' : '#c9d1d9', padding: '6px 8px', borderRadius: '6px', fontSize: '12px', cursor: 'pointer', border: teksAlign === 'left' ? '1px solid #a371f7' : '1px solid #30363d' }} title="Rata Kiri">☰</button>
+                    <button onClick={() => setTeksAlign('center')} style={{ backgroundColor: teksAlign === 'center' ? '#a371f7' : '#21262d', color: teksAlign === 'center' ? '#fff' : '#c9d1d9', padding: '6px 8px', borderRadius: '6px', fontSize: '12px', cursor: 'pointer', border: teksAlign === 'center' ? '1px solid #a371f7' : '1px solid #30363d' }} title="Rata Tengah">≡</button>
+                    <button onClick={() => setTeksAlign('right')} style={{ backgroundColor: teksAlign === 'right' ? '#a371f7' : '#21262d', color: teksAlign === 'right' ? '#fff' : '#c9d1d9', padding: '6px 8px', borderRadius: '6px', fontSize: '12px', cursor: 'pointer', border: teksAlign === 'right' ? '1px solid #a371f7' : '1px solid #30363d' }} title="Rata Kanan">☰</button>
                   </div>
 
                   <div 
@@ -669,7 +729,7 @@ export default function AgoraVadaPortal() {
                 <div style={{ backgroundColor: '#0d1117', padding: '12px 16px', borderRadius: '12px', border: '1px solid #30363d' }}>
                   <label style={{ fontSize: '11px', fontWeight: '700', color: '#f78166', display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px' }}>
                     <span>📍 KONTROL SUMBER BERITA</span>
-                    <button onClick={() => { setSumberX(110); setSumberY(778); setUkuranFontSumber(25); }} style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: '14px', padding: 0 }} title="Kembalikan ke Setelan Awal">🔄</button>
+                    <button onClick={() => { const def = TEMPLATE_DEFAULTS[templateMode]; setSumberX(def.sumberX); setSumberY(def.sumberY); setUkuranFontSumber(def.ukuranFontSumber); }} style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: '14px', padding: 0 }} title="Kembalikan ke Setelan Awal">🔄</button>
                   </label>
                   <div style={{ display: 'grid', gridTemplateColumns: '1fr', gap: '8px' }}>
                     <div>
@@ -717,7 +777,7 @@ export default function AgoraVadaPortal() {
                 <div style={{ backgroundColor: '#0d1117', padding: '12px 16px', borderRadius: '12px', border: '1px solid #30363d' }}>
                   <label style={{ fontSize: '11px', fontWeight: '700', color: '#a371f7', display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px' }}>
                     <span>✨ KONTROL POSISI JUDUL</span>
-                    <button onClick={() => { setTeksX(110); setTeksY(850); setUkuranFont(80); setJarakBaris(1.4); }} style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: '14px', padding: 0 }} title="Kembalikan ke Setelan Awal">🔄</button>
+                    <button onClick={() => { const def = TEMPLATE_DEFAULTS[templateMode]; setTeksX(def.teksX); setTeksY(def.teksY); setUkuranFont(def.ukuranFont); setJarakBaris(def.jarakBaris); }} style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: '14px', padding: 0 }} title="Kembalikan ke Setelan Awal">🔄</button>
                   </label>
                   <div style={{ display: 'grid', gridTemplateColumns: '1fr', gap: '8px' }}>
                     <div>
