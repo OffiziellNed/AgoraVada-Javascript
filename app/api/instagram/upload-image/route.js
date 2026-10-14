@@ -5,7 +5,7 @@ export async function POST(req) {
   const file = formData.get('file');
   if (!file) return Response.json({ error: 'No file' }, { status: 400 });
 
-  const blob = await put(`agoravada-${Date.now()}.jpg`, file, {
+  const blob = await put(`agoravada-${Date.now()}-${file.name}`, file, {
     access: 'public',
   });
 
