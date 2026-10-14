@@ -1,5 +1,4 @@
 "use client";
-
 import React, { useState, useRef, useEffect } from 'react';
 
 export default function AgoraVadaPortal() {
@@ -9,946 +8,215 @@ export default function AgoraVadaPortal() {
   const [rawBeritaContent, setRawBeritaContent] = useState('');
   const [promptMode, setPromptMode] = useState('homeless');
   const [selectedHook, setSelectedHook] = useState('urgent');
-  
   const [judulHtml, setJudulHtml] = useState('');
   const [sumberBerita, setSumberBerita] = useState('');
-  const [imageUrl, setImageUrl] = useState(''); 
-
-  // NEW STATES FOR REVIEW & PUBLISH
-  const [reviewImageUrl, setReviewImageUrl] = useState('');
-  const [reviewImageBlob, setReviewImageBlob] = useState(null);
-  const [captionText, setCaptionText] = useState('');
-  const [isUploading, setIsUploading] = useState(false);
-
-  const PROMPT_TEMPLATES = {
-    homeless: 'Tolong buat 10 judul berita menggunakan hook dan copywriter handal untuk media alternatif "AgoraVada", serta buatkan caption untuk instagram, normatif saja dan informatif. Pastikan diakhiri oleh sumber berita dan 3 hastag (wajib ada #AgoraVada sisanya disesuaikan dengan kata kunci subjek dan topik yang dibahas).',
-    threads: 'Tolong identifikasi isu, paparkan fakta penting, berikan 10 perspektif 5 opini Pro dan 5 Opini Kontra untuk X atau Threads, Jika kontra boleh gunakan Bahasa satir, sarkas, tajam. Pastikan singkat singkat saja'
-  };
-  
+  const [imageUrl, setImageUrl] = useState('');
   const [isCopied, setIsCopied] = useState(false);
-  
   const [imgX, setImgX] = useState(0);
   const [imgY, setImgY] = useState(0);
   const [imgScale, setImgScale] = useState(1);
   const [isDragging, setIsDragging] = useState(false);
   const [dragStart, setDragStart] = useState({ x: 0, y: 0 });
-
   const [teksX, setTeksX] = useState(110);
   const [teksY, setTeksY] = useState(850);
   const [ukuranFont, setUkuranFont] = useState(80);
   const [jarakBaris, setJarakBaris] = useState(1.4);
-
-  const [sumberX, setSumberX] = useState(110); 
+  const [sumberX, setSumberX] = useState(110);
   const [sumberY, setSumberY] = useState(778);
   const [ukuranFontSumber, setUkuranFontSumber] = useState(25);
   const [sumberColor, setSumberColor] = useState('#FFFFFF');
   const [templateMode, setTemplateMode] = useState('agoravada');
   const [teksAlign, setTeksAlign] = useState('left');
-
-  // 1.5 cm margin = 85px aman di 1080px canvas - hanya preview
   const MARGIN_PX = 85;
   const TEMPLATE_DEFAULTS = {
     agoravada: { teksX: 110, teksY: 850, ukuranFont: 80, jarakBaris: 1.4, sumberX: 110, sumberY: 778, ukuranFontSumber: 25 },
     agentlondo: { teksX: 110, teksY: 593, ukuranFont: 45, jarakBaris: 1.4, sumberX: 110, sumberY: 700, ukuranFontSumber: 20 }
   };
+  // BARU - Review & Carousel
+  const [reviewImageUrl, setReviewImageUrl] = useState(null);
+  const [reviewImageBlob, setReviewImageBlob] = useState(null);
+  const [captionText, setCaptionText] = useState('');
+  const [isUploading, setIsUploading] = useState(false);
+  const [additionalSlides, setAdditionalSlides] = useState([]); // {id,file,previewUrl,type}
+  const [currentPreviewSlide, setCurrentPreviewSlide] = useState(0);
 
   const canvasRef = useRef(null);
   const [loadedBgImg, setLoadedBgImg] = useState(null);
   const [templateImgObj, setTemplateImgObj] = useState(null);
 
+  const PROMPT_TEMPLATES = {
+    homeless: `Tolong buat 10 judul berita menggunakan hook dan copywriter handal untuk media alternatif "AgoraVada", serta buatkan caption untuk instagram, normatif saja dan informatif. Pastikan diakhiri oleh sumber berita dan 3 hastag (wajib ada #AgoraVada sisanya disesuaikan dengan kata kunci subjek dan topik yang dibahas).`,
+    threads: `Tolong identifikasi isu, paparkan fakta penting, berikan 10 perspektif 5 opini Pro dan 5 Opini Kontra untuk X atau Threads, Jika kontra boleh gunakan Bahasa satir, sarkas, tajam. Pastikan singkat singkat saja`
+  };
+
   useEffect(() => {
     const loadFonts = async () => {
       try {
-        const fontSB = new FontFace('PoppinsSemiBold', 'url(/Poppins-SemiBold.ttf)');
-        await fontSB.load();
-        document.fonts.add(fontSB);
-        const fontSBI = new FontFace('PoppinsSemiBoldItalic', 'url(/Poppins-SemiBoldItalic.ttf)');
-        await fontSBI.load();
-        document.fonts.add(fontSBI);
-      } catch (err) {
-        console.warn("Font Poppins gagal di-load. Pastikan file ada di folder public.");
-      }
-      try {
-        const fontIBM = new FontFace('IBMPlexMono-SemiBold', 'url(/IBMPlexMono-SemiBold.ttf)');
-        await fontIBM.load();
-        document.fonts.add(fontIBM);
-        const fontIBMI = new FontFace('IBMPlexMono-SemiBoldItalic', 'url(/IBMPlexMono-SemiBoldItalic.ttf)');
-        await fontIBMI.load();
-        document.fonts.add(fontIBMI);
-      } catch (err) {
-        console.warn("Font IBM Plex Mono gagal di-load. Pastikan file IBMPlexMono-SemiBold.ttf ada di public.");
-      }
-    };
-    loadFonts();
-
-    const tImg = new Image();
-    tImg.src = '/Agora Vada Template.png';
-    tImg.onload = () => setTemplateImgObj(tImg);
+        const f1 = new FontFace('PoppinsSemiBold', 'url(/Poppins-SemiBold.ttf)'); await f1.load(); document.fonts.add(f1);
+        const f2 = new FontFace('PoppinsSemiBoldItalic', 'url(/Poppins-SemiBoldItalic.ttf)'); await f2.load(); document.fonts.add(f2);
+        const f3 = new FontFace('IBMPlexMono-SemiBold', 'url(/IBMPlexMono-SemiBold.ttf)'); await f3.load(); document.fonts.add(f3);
+        const f4 = new FontFace('IBMPlexMono-SemiBoldItalic', 'url(/IBMPlexMono-SemiBoldItalic.ttf)'); await f4.load(); document.fonts.add(f4);
+      } catch(e){}
+    }; loadFonts();
+    const tImg = new Image(); tImg.src = '/Agora Vada Template.png'; tImg.onload = () => setTemplateImgObj(tImg);
   }, []);
 
   useEffect(() => {
-    if (!imageUrl) {
-      setLoadedBgImg(null);
-      return;
-    }
-    let isCancelled = false;
-    const fetchImageSafely = async () => {
-      const tryLoad = (url) => new Promise((resolve, reject) => {
-        const img = new Image();
-        img.crossOrigin = 'anonymous';
-        img.onload = () => resolve(img);
-        img.onerror = () => reject();
-        img.src = url;
-      });
-
-      if (!imageUrl.startsWith('http')) {
-        try { 
-          const img = await tryLoad(imageUrl); 
-          if (!isCancelled) setLoadedBgImg(img); 
-        } catch(e) {}
-        return;
-      }
-
-      const proxies = [
-        'https://api.allorigins.win/raw?url=' + encodeURIComponent(imageUrl),
-        'https://wsrv.nl/?url=' + encodeURIComponent(imageUrl),
-        'https://corsproxy.io/?' + encodeURIComponent(imageUrl),
-        imageUrl 
-      ];
-
-      for (let proxy of proxies) {
-        try {
-          const img = await tryLoad(proxy);
-          if (!isCancelled) setLoadedBgImg(img);
-          return; 
-        } catch(e) {
-          continue; 
-        }
-      }
-
-      if (!isCancelled) {
-        setLoadedBgImg(null);
-        alert("Server website memblokir akses gambar ini. Silakan download gambarnya secara manual, lalu gunakan menu 'UPLOAD DARI PC/HP'.");
-      }
-    };
-
-    fetchImageSafely();
-    return () => { isCancelled = true; };
+    if (!imageUrl) { setLoadedBgImg(null); return; }
+    let cancelled = false;
+    const tryLoad = (url) => new Promise((res, rej) => { const img = new Image(); img.crossOrigin='anonymous'; img.onload=()=>res(img); img.onerror=()=>rej(); img.src=url; });
+    const load = async () => {
+      if (!imageUrl.startsWith('http')) { try{ const i=await tryLoad(imageUrl); if(!cancelled) setLoadedBgImg(i);}catch{} return; }
+      const proxies = [`https://api.allorigins.win/raw?url=${encodeURIComponent(imageUrl)}`,`https://wsrv.nl/?url=${encodeURIComponent(imageUrl)}`, imageUrl];
+      for (let p of proxies){ try{ const i=await tryLoad(p); if(!cancelled) setLoadedBgImg(i); return; }catch{ continue; } }
+    }; load(); return ()=>{cancelled=true;};
   }, [imageUrl]);
 
-  const handleFormat = (command, value = null) => {
-    document.execCommand(command, false, value);
-    const editor = document.getElementById('judul-editor');
-    if (editor) setJudulHtml(editor.innerHTML);
+  const handleFormat = (cmd, val=null) => { document.execCommand(cmd,false,val); const ed=document.getElementById('judul-editor'); if(ed) setJudulHtml(ed.innerHTML); };
+
+  const renderRichText = (ctx, htmlString, x, y, maxWidth, lineHeight, baseFontSize, align='left') => {
+    if (!htmlString) return; ctx.textBaseline='top';
+    const clean = htmlString.replace(/<div[^>]*><br><\/div>/gi,'\n').replace(/<div[^>]*>/gi,'\n').replace(/<\/div>/gi,'').replace(/<br\s*[\/]?>/gi,'\n');
+    const tmp=document.createElement('div'); tmp.innerHTML=clean;
+    let words=[]; const extract=(node,ctx2)=>{ if(node.nodeType===Node.TEXT_NODE){ node.textContent.split('\n').forEach((t,i)=>{ if(i>0) words.push({word:'__NL__',isNL:true}); t.split(/\s+/).forEach(w=>{ if(w.trim()) words.push({word:w.trim(),color:ctx2.color,isItalic:ctx2.isItalic}); }); }); } else if(node.nodeType===Node.ELEMENT_NODE){ let nc={...ctx2}; if(node.tagName==='I'||node.tagName==='EM'||node.style?.fontStyle==='italic') nc.isItalic=true; if(node.style?.color) nc.color=node.style.color; if(node.tagName==='FONT'&&node.getAttribute('color')) nc.color=node.getAttribute('color'); node.childNodes.forEach(c=>extract(c,nc)); } }; extract(tmp,{color:'#FFFFFF',isItalic:false});
+    const baseF=templateMode==='agentlondo'?'IBMPlexMono-SemiBold':'PoppinsSemiBold'; const italicF=templateMode==='agentlondo'?'IBMPlexMono-SemiBoldItalic':'PoppinsSemiBoldItalic';
+    ctx.font=`${baseFontSize}px ${baseF}, sans-serif`; const spW=ctx.measureText(' ').width; let lines=[], cur=[], curW=0;
+    words.forEach(it=>{ if(it.isNL||it.word==='__NL__'){ lines.push(cur); cur=[]; curW=0; } else { const fn=it.isItalic?italicF:baseF; ctx.font=`${baseFontSize}px ${fn}, sans-serif`; const wW=ctx.measureText(it.word).width; if(curW+wW>maxWidth&&cur.length>0){ lines.push(cur); cur=[it]; curW=wW+spW; } else { cur.push(it); curW+=wW+spW; } } }); if(cur.length) lines.push(cur);
+    let cy=y; lines.forEach((lineArr, li)=>{ let lw=0; lineArr.forEach((it,idx)=>{ const fn=it.isItalic?italicF:baseF; ctx.font=`${baseFontSize}px ${fn}, sans-serif`; lw+=ctx.measureText(it.word).width+(idx<lineArr.length-1?spW:0); }); let cx=x, gap=0; if(align==='center') cx=x+(maxWidth-lw)/2; else if(align==='right') cx=x+(maxWidth-lw); else if(align==='justify'&&li!==lines.length-1&&lineArr.length>1){ const raw=(maxWidth-lw)/(lineArr.length-1); if(raw<=28) gap=Math.min(raw,Math.min(12,spW*0.8)); } lineArr.forEach(it=>{ const fn=it.isItalic?italicF:baseF; ctx.font=`${baseFontSize}px ${fn}, sans-serif`; ctx.fillStyle=it.color; ctx.textAlign='left'; ctx.fillText(it.word,cx,cy); cx+=ctx.measureText(it.word).width+spW+gap; }); cy+=lineHeight; });
   };
 
-  const renderRichText = (ctx, htmlString, x, y, maxWidth, lineHeight, baseFontSize, align = 'left') => {
-    if (!htmlString) return; 
-    ctx.textBaseline = 'top'; 
-
-    const cleanHTML = htmlString
-      .replace(/<div[^>]*><br><\/div>/gi, '\n')
-      .replace(/<div[^>]*>/gi, '\n')
-      .replace(/<\/div>/gi, '')
-      .replace(/<br\s*[\/]?>/gi, '\n');
-
-    const tempDiv = document.createElement('div');
-    tempDiv.innerHTML = cleanHTML;
-    
-    let wordsWithContext = [];
-    const extract = (node, currentContext) => {
-      if (node.nodeType === Node.TEXT_NODE) {
-        let text = node.textContent;
-        let tokens = text.split('\n');
-        tokens.forEach((lineText, index) => {
-          if (index > 0) wordsWithContext.push({ word: '', ...currentContext, isNewline: true });
-          let words = lineText.split(/\s+/);
-          words.forEach(w => {
-            if (w.trim().length > 0) wordsWithContext.push({ word: w.trim(), ...currentContext, isNewline: false });
-          });
-        });
-      } else if (node.nodeType === Node.ELEMENT_NODE) {
-        let newContext = { ...currentContext };
-        const tag = node.tagName.toLowerCase();
-        
-        if (tag === 'i' || tag === 'em') newContext.isItalic = true;
-        if (node.style && node.style.color) newContext.color = node.style.color;
-        if (tag === 'font' && node.getAttribute('color')) newContext.color = node.getAttribute('color');
-        
-        node.childNodes.forEach(child => extract(child, newContext));
-      }
-    };
-    
-    extract(tempDiv, { color: '#FFFFFF', isItalic: false }); 
-
-    let lines = [];
-    let currentLine = [];
-    let currentWidth = 0;
-    
-    const baseFontFamily = templateMode === 'agentlondo' ? 'IBMPlexMono-SemiBold' : 'PoppinsSemiBold';
-    const italicFontFamily = templateMode === 'agentlondo' ? 'IBMPlexMono-SemiBoldItalic' : 'PoppinsSemiBoldItalic';
-    
-    ctx.font = baseFontSize + 'px ' + baseFontFamily + ', sans-serif';
-    const spaceWidth = ctx.measureText(' ').width;
-
-    wordsWithContext.forEach(item => {
-      if (item.isNewline) {
-        lines.push(currentLine);
-        currentLine = [];
-        currentWidth = 0;
-      } else {
-        const fontName = item.isItalic ? italicFontFamily : baseFontFamily;
-        ctx.font = baseFontSize + 'px ' + fontName + ', sans-serif';
-        let wWidth = ctx.measureText(item.word).width;
-        
-        if (wWidth > maxWidth) {
-          let remaining = item.word;
-          while (remaining.length > 0) {
-            let chunk = '';
-            for (let i = 1; i <= remaining.length; i++) {
-              const test = remaining.slice(0, i);
-              if (ctx.measureText(test).width > maxWidth) break;
-              chunk = test;
-            }
-            if (!chunk) chunk = remaining.slice(0, 1);
-            const chunkItem = { ...item, word: chunk };
-            const chunkWidth = ctx.measureText(chunk).width;
-            if (currentWidth + chunkWidth > maxWidth && currentLine.length > 0) {
-              lines.push(currentLine);
-              currentLine = [chunkItem];
-              currentWidth = chunkWidth + spaceWidth;
-            } else {
-              currentLine.push(chunkItem);
-              currentWidth += chunkWidth + spaceWidth;
-            }
-            remaining = remaining.slice(chunk.length);
-            if (remaining.length > 0) {
-              lines.push(currentLine);
-              currentLine = [];
-              currentWidth = 0;
-            }
-          }
-        } else {
-          if (currentWidth + wWidth > maxWidth && currentLine.length > 0) {
-            lines.push(currentLine);
-            currentLine = [item];
-            currentWidth = wWidth + spaceWidth;
-          } else {
-            currentLine.push(item);
-            currentWidth += wWidth + spaceWidth;
-          }
-        }
-      }
-    });
-    if (currentLine.length > 0) lines.push(currentLine);
-
-    let currentY = y;
-    lines.forEach((lineArr, lineIndex) => {
-      let lineWidth = 0;
-      lineArr.forEach((item, idx) => {
-        const fontName = item.isItalic ? italicFontFamily : baseFontFamily;
-        ctx.font = baseFontSize + 'px ' + fontName + ', sans-serif';
-        lineWidth += ctx.measureText(item.word).width;
-        if (idx < lineArr.length - 1) lineWidth += spaceWidth;
-      });
-
-      let currentX = x;
-      let gapExtra = 0;
-      if (align === 'center') {
-        currentX = x + (maxWidth - lineWidth) / 2;
-      } else if (align === 'right') {
-        currentX = x + (maxWidth - lineWidth);
-      } else if (align === 'justify') {
-        const isLastLine = lineIndex === lines.length - 1;
-        if (!isLastLine && lineArr.length > 1) {
-          const rawExtra = (maxWidth - lineWidth) / (lineArr.length - 1);
-          const maxAllowedExtra = Math.min(12, spaceWidth * 0.8);
-          if (rawExtra > 28) {
-            gapExtra = 0;
-          } else {
-            gapExtra = Math.min(rawExtra, maxAllowedExtra);
-          }
-        }
-      }
-
-      lineArr.forEach((item) => {
-        const fontName = item.isItalic ? italicFontFamily : baseFontFamily;
-        ctx.font = baseFontSize + 'px ' + fontName + ', sans-serif';
-        ctx.fillStyle = item.color;
-        ctx.textAlign = 'left';
-        ctx.fillText(item.word, currentX, currentY);
-        currentX += ctx.measureText(item.word).width + spaceWidth + gapExtra;
-      });
-      currentY += lineHeight;
-    });
+  const renderCanvas = (ctx, canvas, showGuide=true) => {
+    ctx.fillStyle='#111827'; ctx.fillRect(0,0,canvas.width,canvas.height);
+    if(loadedBgImg){ const dw=loadedBgImg.width*imgScale, dh=loadedBgImg.height*imgScale; ctx.drawImage(loadedBgImg,imgX,imgY,dw,dh); }
+    if(templateImgObj) ctx.drawImage(templateImgObj,0,0,canvas.width,canvas.height);
+    if(showGuide){ ctx.save(); ctx.strokeStyle='rgba(139,148,158,0.5)'; ctx.setLineDash([10,8]); ctx.lineWidth=1.5; ctx.strokeRect(MARGIN_PX,MARGIN_PX,canvas.width-MARGIN_PX*2,canvas.height-MARGIN_PX*2); ctx.restore(); }
+    const lh=ukuranFont*jarakBaris; const cx=Math.max(MARGIN_PX,Math.min(teksX,1080-MARGIN_PX-100)); const cy=Math.max(MARGIN_PX,Math.min(teksY,1350-MARGIN_PX-100)); const aw=1080-cx-MARGIN_PX; const mw=Math.max(100,Math.min(950,aw)); renderRichText(ctx,judulHtml,cx,cy,mw,lh,ukuranFont,teksAlign);
+    if(sumberBerita){ ctx.fillStyle=sumberColor; const sf=templateMode==='agentlondo'?'IBMPlexMono-SemiBoldItalic':'PoppinsSemiBoldItalic'; ctx.font=`${ukuranFontSumber}px ${sf}, sans-serif`; ctx.textAlign='left'; ctx.textBaseline='top'; ctx.fillText(sumberBerita,sumberX,sumberY); }
   };
 
-  // RENDER CANVAS - showMarginGuide hanya untuk preview
-  const renderCanvas = (ctx, canvas, showMarginGuide = true) => {
-    ctx.fillStyle = '#111827';
-    ctx.fillRect(0, 0, canvas.width, canvas.height);
+  useEffect(()=>{ if(currentPage!==3) return; const c=canvasRef.current; if(!c) return; const ctx=c.getContext('2d'); renderCanvas(ctx,c,true); }, [currentPage,loadedBgImg,templateImgObj,imgX,imgY,imgScale,teksX,teksY,ukuranFont,jarakBaris,sumberX,sumberY,ukuranFontSumber,judulHtml,sumberBerita,sumberColor,templateMode,teksAlign]);
 
-    if (loadedBgImg) {
-      ctx.save();
-      const drawW = loadedBgImg.width * imgScale;
-      const drawH = loadedBgImg.height * imgScale;
-      ctx.drawImage(loadedBgImg, imgX, imgY, drawW, drawH);
-      ctx.restore();
-    }
+  const handleMouseDown = (e)=>{ setIsDragging(true); const cx=e.clientX||e.touches?.[0]?.clientX; const cy=e.clientY||e.touches?.[0]?.clientY; setDragStart({x:cx-imgX,y:cy-imgY}); };
+  const handleMouseMove = (e)=>{ if(!isDragging) return; const cx=e.clientX||e.touches?.[0]?.clientX; const cy=e.clientY||e.touches?.[0]?.clientY; setImgX(cx-dragStart.x); setImgY(cy-dragStart.y); };
+  const handleMouseUp = ()=>setIsDragging(false);
 
-    if (templateImgObj) {
-      ctx.drawImage(templateImgObj, 0, 0, canvas.width, canvas.height);
-    }
+  const downloadGambar = ()=>{ const c=canvasRef.current; if(!c) return; const ctx=c.getContext('2d'); renderCanvas(ctx,c,false); const a=document.createElement('a'); a.download=templateMode==='agentlondo'?'AgentLondo_Post.jpg':'AgoraVada_Post.jpg'; a.href=c.toDataURL('image/jpeg',0.95); a.click(); setTimeout(()=>{ const ctx2=c.getContext('2d'); renderCanvas(ctx2,c,true); },100); };
 
-    if (showMarginGuide) {
-      ctx.save();
-      ctx.strokeStyle = 'rgba(139, 148, 158, 0.5)';
-      ctx.setLineDash([10, 8]);
-      ctx.lineWidth = 1.5;
-      ctx.strokeRect(MARGIN_PX, MARGIN_PX, canvas.width - MARGIN_PX*2, canvas.height - MARGIN_PX*2);
-      ctx.restore();
-    }
+  const handleTapUploadButton = ()=>{ const c=canvasRef.current; if(!c) return; const ctx=c.getContext('2d'); renderCanvas(ctx,c,false); c.toBlob(blob=>{ if(!blob) return; const url=URL.createObjectURL(blob); setReviewImageBlob(blob); setReviewImageUrl(url); const tmp=document.createElement('div'); tmp.innerHTML=judulHtml; const plain=tmp.textContent||''; let cap=plain.trim(); if(sumberBerita) cap+=`\n\n${sumberBerita}`; if(cap.indexOf('#AgoraVada')===-1) cap+=`\n\n#AgoraVada #${templateMode==='agentlondo'?'AgentLondo':'AgoraVada} #BeritaBogor`; setCaptionText(cap.trim()); setCurrentPage(4); setCurrentPreviewSlide(0); setTimeout(()=>{ const cc=canvasRef.current; if(cc){ renderCanvas(cc.getContext('2d'),cc,true); } },150); },'image/jpeg',0.92); };
 
-    const lh = ukuranFont * jarakBaris;
-    const clampedX = Math.max(MARGIN_PX, Math.min(teksX, 1080 - MARGIN_PX - 100));
-    const clampedY = Math.max(MARGIN_PX, Math.min(teksY, 1350 - MARGIN_PX - 100));
-    const availableWidth = 1080 - clampedX - MARGIN_PX;
-    const safeMaxWidth = Math.max(100, Math.min(950, availableWidth));
-    renderRichText(ctx, judulHtml, clampedX, clampedY, safeMaxWidth, lh, ukuranFont, teksAlign);
+  // SLIDE TAMBAHAN
+  const handleAdditionalFiles = (e)=>{ const files=Array.from(e.target.files); if(additionalSlides.length+files.length>9){ alert('Max 9 tambahan (total 10 slide)'); return; } const newSlides=files.map(f=>({ id:Date.now()+Math.random(), file:f, previewUrl:URL.createObjectURL(f), type:f.type.startsWith('video')?'video':'image' })); setAdditionalSlides(prev=>[...prev,...newSlides]); };
+  const removeSlide = (id)=>{ setAdditionalSlides(prev=>{ const t=prev.find(s=>s.id===id); if(t) URL.revokeObjectURL(t.previewUrl); return prev.filter(s=>s.id!==id); }); };
+  const moveSlide = (idx,dir)=>{ const arr=[...additionalSlides]; const n=dir==='up'?idx-1:idx+1; if(n<0||n>=arr.length) return; [arr[idx],arr[n]]=[arr[n],arr[idx]]; setAdditionalSlides(arr); };
 
-    if (sumberBerita) {
-      ctx.fillStyle = sumberColor || '#FFFFFF';
-      const sumberFont = templateMode === 'agentlondo' ? 'IBMPlexMono-SemiBoldItalic' : 'PoppinsSemiBoldItalic';
-      ctx.font = ukuranFontSumber + 'px ' + sumberFont + ', sans-serif';
-      ctx.textAlign = 'left';
-      ctx.textBaseline = 'top';
-      ctx.fillText(sumberBerita, sumberX, sumberY);
-    }
-  };
-
-  useEffect(() => {
-    if (currentPage !== 3) return;
-    const canvas = canvasRef.current;
-    if (!canvas) return;
-    const ctx = canvas.getContext('2d');
-    renderCanvas(ctx, canvas, true);
-  }, [currentPage, loadedBgImg, templateImgObj, imgX, imgY, imgScale, teksX, teksY, ukuranFont, jarakBaris, sumberX, sumberY, ukuranFontSumber, judulHtml, sumberBerita, sumberColor, templateMode, teksAlign]);
-
-  const handleMouseDown = (e) => {
-    setIsDragging(true);
-    const clientX = e.clientX || (e.touches && e.touches[0].clientX);
-    const clientY = e.clientY || (e.touches && e.touches[0].clientY);
-    setDragStart({ x: clientX - imgX, y: clientY - imgY });
-  };
-  const handleMouseMove = (e) => {
-    if (!isDragging) return;
-    const clientX = e.clientX || (e.touches && e.touches[0].clientX);
-    const clientY = e.clientY || (e.touches && e.touches[0].clientY);
-    setImgX(clientX - dragStart.x);
-    setImgY(clientY - dragStart.y);
-  };
-  const handleMouseUp = () => setIsDragging(false);
-  const handleWheel = (e) => {
-    e.preventDefault();
-    const zoomIntensity = 0.05;
-    if (e.deltaY < 0) setImgScale(p => Math.min(p + zoomIntensity, 5));
-    else setImgScale(p => Math.max(p - zoomIntensity, 0.1));
-  };
-
-  const handleUploadFoto = (e) => {
-    const file = e.target.files[0];
-    if (file) setImageUrl(URL.createObjectURL(file));
-  };
-
-  const handleUploadTemplate = (e) => {
-    const file = e.target.files[0];
-    if (!file) return;
-    const img = new Image();
-    const objectUrl = URL.createObjectURL(file);
-    img.onload = () => {
-      if (img.width !== 1080 || img.height !== 1350) {
-        const confirmUpload = confirm('Ukuran template ' + img.width + ' x ' + img.height + ', bukan 1080 x 1350.\n\nSyarat ideal 1080x1350 biar pas di preview. Tetap pakai?');
-        if (!confirmUpload) {
-          URL.revokeObjectURL(objectUrl);
-          return;
-        }
-      }
-      setTemplateImgObj(img);
-    };
-    img.onerror = () => {
-      alert('Gagal load template. Pastikan file gambar valid.');
-    };
-    img.src = objectUrl;
-  };
-
-  const downloadGambar = () => {
-    const canvas = canvasRef.current;
-    if (!canvas) return;
-    const ctx = canvas.getContext('2d');
-    renderCanvas(ctx, canvas, false);
-    const link = document.createElement('a');
-    link.download = templateMode === 'agentlondo' ? 'AgentLondo_Post.jpg' : 'AgoraVada_Post.jpg';
-    link.href = canvas.toDataURL("image/jpeg", 0.95);
-    link.click();
-    setTimeout(() => {
-      const ctx2 = canvas.getContext('2d');
-      renderCanvas(ctx2, canvas, true);
-    }, 100);
-  };
-
-  const handleTapUploadButton = () => {
-    const canvas = canvasRef.current;
-    if (!canvas) return;
-    const ctx = canvas.getContext('2d');
-    renderCanvas(ctx, canvas, false);
-    canvas.toBlob((blob) => {
-      if (!blob) {
-        alert('Gagal export gambar');
-        const ctxRestore = canvas.getContext('2d');
-        renderCanvas(ctxRestore, canvas, true);
-        return;
-      }
-      const objectUrl = URL.createObjectURL(blob);
-      setReviewImageBlob(blob);
-      setReviewImageUrl(objectUrl);
-      
-      const tempDiv = document.createElement('div');
-      tempDiv.innerHTML = judulHtml || '';
-      const plainJudul = tempDiv.textContent || tempDiv.innerText || '';
-      
-      let caption = plainJudul.trim();
-      if (sumberBerita) caption += '\n\n' + sumberBerita;
-      if (promptTeks) {
-        const shortPrompt = promptTeks.length > 800 ? promptTeks.slice(0, 800) + '...' : promptTeks;
-        caption += '\n\n' + shortPrompt;
-      }
-      if (caption.indexOf('#AgoraVada') === -1) {
-        caption += '\n\n#AgoraVada #BeritaTerkini #Info';
-      }
-      setCaptionText(caption.trim());
-      setCurrentPage(4);
-      setTimeout(() => {
-        const c = canvasRef.current;
-        if (c) {
-          const ctx2 = c.getContext('2d');
-          renderCanvas(ctx2, c, true);
-        }
-      }, 150);
-    }, 'image/jpeg', 0.92);
-  };
-
-  const handlePublish = async () => {
-    if (!reviewImageBlob) {
-      alert('Gambar belum siap');
-      return;
-    }
-    if (!captionText.trim()) {
-      alert('Caption kosong');
-      return;
-    }
+  const handlePublish = async ()=>{
+    if(!reviewImageBlob) return alert('Gambar utama belum siap');
     setIsUploading(true);
-    try {
-      const formData = new FormData();
-      formData.append('file', reviewImageBlob, 'AgoraVada_Post.jpg');
-      
-      const uploadRes = await fetch('/api/instagram/upload-image', {
-        method: 'POST',
-        body: formData
-      });
-      const uploadData = await uploadRes.json();
-      if (!uploadRes.ok) {
-        throw new Error(uploadData.error || uploadData.message || 'Upload image gagal');
+    try{
+      const allFiles = [new File([reviewImageBlob],'slide1.jpg',{type:'image/jpeg'}),...additionalSlides.map(s=>s.file)];
+      const urls=[];
+      for(let f of allFiles){
+        const fd=new FormData(); fd.append('file',f);
+        const upRes=await fetch('/api/instagram/upload-image',{method:'POST',body:fd});
+        const upData=await upRes.json(); if(!upRes.ok) throw new Error(upData.error||'Upload gagal');
+        urls.push(upData.url||upData.image_url||upData.id);
       }
-      
-      const imageId = uploadData.id || uploadData.image_id || uploadData.url || uploadData.image_url;
-      const imageUrlForPublish = uploadData.url || uploadData.image_url || imageId;
-      
-      const publishRes = await fetch('/api/instagram/publish', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          image_id: imageId,
-          image_url: imageUrlForPublish,
-          caption: captionText
-        })
-      });
-      const publishData = await publishRes.json();
-      if (!publishRes.ok) {
-        throw new Error(publishData.error || publishData.message || 'Publish gagal');
-      }
-      
-      alert('Berhasil publish ke Instagram! ID: ' + (publishData.id || 'ok'));
-      setCurrentPage(3);
-    } catch (err) {
-      console.error(err);
-      alert('Gagal publish: ' + err.message);
-    } finally {
-      setIsUploading(false);
-    }
-  };
-
-  const handleCopyPrompt = () => {
-    navigator.clipboard.writeText(promptTeks);
-    setIsCopied(true);
-    setTimeout(() => {
-      setIsCopied(false);
-    }, 2000); 
+      const pubRes=await fetch('/api/instagram/publish',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({ imageUrls:urls, caption:captionText })});
+      const pubData=await pubRes.json(); if(!pubRes.ok) throw new Error(pubData.error||'Publish gagal');
+      alert('Berhasil publish IG! ID: '+(pubData.id||'ok')); setCurrentPage(3);
+    }catch(err){ alert('Gagal: '+err.message); } finally{ setIsUploading(false); }
   };
 
   return (
-    <div style={{ width: '100%', maxWidth: currentPage === 3 ? '950px' : currentPage === 4 ? '900px' : '480px', margin: '0 auto', padding: '20px', transition: 'max-width 0.3s ease' }}>
-      
-      <div style={{ textAlign: 'center', marginBottom: '20px' }}>
-        <h1 style={{ fontSize: '20px', fontWeight: '800', letterSpacing: '1px', color: '#ffffff' }}>
-          ⚡ AGORA VADA
-        </h1>
-      </div>
-
-      <div style={{ backgroundColor: '#161b22', border: '1px solid #30363d', borderRadius: '16px', padding: '24px', boxShadow: '0 10px 25px rgba(0,0,0,0.5)' }}>
-
-        {currentPage === 1 && (
-          <div>
-            <h2 style={{ fontSize: '15px', fontWeight: '700', marginBottom: '16px', color: '#c9d1d9', borderBottom: '1px solid #30363d', paddingBottom: '8px' }}>1. Masukkan Link Berita</h2>
-            <input 
-              type="text" placeholder="https://news.com/..." 
-              style={{ width: '100%', backgroundColor: '#0d1117', border: '1px solid #30363d', color: '#ffffff', padding: '12px 14px', borderRadius: '10px', fontSize: '14px', outline: 'none', marginBottom: '16px', boxSizing: 'border-box' }}
-              value={urlBerita} onChange={(e) => setUrlBerita(e.target.value)}
-            />
-            <div style={{ display: 'flex', gap: '10px' }}>
-              <button 
-                style={{ width: '50%', backgroundColor: '#21262d', color: '#c9d1d9', padding: '12px', borderRadius: '10px', fontWeight: '600', fontSize: '13px', border: '1px solid #30363d', cursor: 'pointer' }}
-                onClick={async () => {
-                  if (!urlBerita) return alert("Masukkan link dulu!");
-                  setPromptTeks("Menyedot data dari web, tunggu sebentar...");
-                  try {
-                    const res = await fetch("/api/tarik-berita", { 
-                      method: "POST", 
-                      headers: { "Content-Type": "application/json" }, 
-                      body: JSON.stringify({ url: urlBerita }) 
-                    });
-                    const data = await res.json();
-                    if(data.status === "success") {
-                      const promptSakti = PROMPT_TEMPLATES.homeless + "\n\n" + data.prompt;
-                      setPromptTeks(promptSakti); 
-                      setSumberBerita(data.sumber || (urlBerita ? "Sumber Berita: " + new URL(urlBerita).hostname : ''));
-                      if(data.gambar_url) setImageUrl(data.gambar_url);
-                      setCurrentPage(2);
-                    } else {
-                      const pesanError = data.error || data.message || data.details || data.detail || "Terhalang sistem keamanan website.";
-                      alert("Gagal menyedot: " + pesanError);
-                      setPromptTeks("Gagal menyedot data otomatis. Silakan ketik manual.");
-                    }
-                  } catch(err) { 
-                    alert("Gagal konek ke API Vercel. Pastikan folder app/api/tarik-berita/route.js sudah dibuat."); 
-                  }
-                }}
-              >Tarik Data 🔄</button>
-              <button 
-                style={{ width: '50%', backgroundColor: '#238636', color: '#ffffff', padding: '12px', borderRadius: '10px', fontWeight: '700', fontSize: '13px', border: 'none', cursor: 'pointer' }}
-                onClick={() => {
-                  if(urlBerita) { 
-                    try { setSumberBerita("Sumber Berita: " + new URL(urlBerita).hostname); } 
-                    catch(e) { setSumberBerita(''); } 
-                  }
-                  setCurrentPage(3);
-                }}
-              >Langsung ke Editor ➔</button>
-            </div>
-          </div>
-        )}
-
-        {currentPage === 2 && (
-          <div>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px', borderBottom: '1px solid #30363d', paddingBottom: '8px' }}>
-              <h2 style={{ fontSize: '15px', fontWeight: '700', color: '#c9d1d9', margin: 0 }}>2. Prompt Manual & Edit Teks</h2>
-              <button 
-                onClick={handleCopyPrompt}
-                style={{ 
-                  backgroundColor: isCopied ? '#238636' : '#21262d', 
-                  color: '#ffffff', 
-                  padding: '6px 12px', 
-                  borderRadius: '6px', 
-                  fontSize: '11px', 
-                  fontWeight: '600', 
-                  border: isCopied ? '1px solid #2ea043' : '1px solid #30363d', 
-                  cursor: 'pointer', 
-                  display: 'flex', 
-                  alignItems: 'center',
-                  transition: 'all 0.2s ease'
-                }}
-              >
-                {isCopied ? "✅ Tersalin!" : "📋 Copy Prompt"}
-              </button>
-            </div>
-
-            <div style={{ display: 'flex', gap: '8px', marginBottom: '12px' }}>
-              <button
-                onClick={() => {
-                  setPromptMode('threads');
-                  if (rawBeritaContent) {
-                    setPromptTeks(PROMPT_TEMPLATES.threads + "\n\n" + rawBeritaContent);
-                  } else {
-                    const parts = promptTeks.split("\n\n");
-                    if (parts.length > 1) {
-                      setPromptTeks(PROMPT_TEMPLATES.threads + "\n\n" + parts.slice(1).join("\n\n"));
-                    } else {
-                      setPromptTeks(PROMPT_TEMPLATES.threads + (promptTeks ? "\n\n" + promptTeks : ''));
-                    }
-                  }
-                }}
-                style={{
-                  flex: 1,
-                  backgroundColor: promptMode === 'threads' ? '#1f6feb' : '#21262d',
-                  color: promptMode === 'threads' ? '#ffffff' : '#8b949e',
-                  padding: '10px 12px',
-                  borderRadius: '8px',
-                  fontSize: '12px',
-                  fontWeight: '700',
-                  border: promptMode === 'threads' ? '1px solid #388bfd' : '1px solid #30363d',
-                  cursor: 'pointer',
-                  transition: 'all 0.2s'
-                }}
-              >
-                🧵 Threads / X
-              </button>
-              <button
-                onClick={() => {
-                  setPromptMode('homeless');
-                  if (rawBeritaContent) {
-                    setPromptTeks(PROMPT_TEMPLATES.homeless + "\n\n" + rawBeritaContent);
-                  } else {
-                    const parts = promptTeks.split("\n\n");
-                    if (parts.length > 1) {
-                      setPromptTeks(PROMPT_TEMPLATES.homeless + "\n\n" + parts.slice(1).join("\n\n"));
-                    } else {
-                      setPromptTeks(PROMPT_TEMPLATES.homeless + (promptTeks ? "\n\n" + promptTeks : ''));
-                    }
-                  }
-                }}
-                style={{
-                  flex: 1,
-                  backgroundColor: promptMode === 'homeless' ? '#238636' : '#21262d',
-                  color: promptMode === 'homeless' ? '#ffffff' : '#8b949e',
-                  padding: '10px 12px',
-                  borderRadius: '8px',
-                  fontSize: '12px',
-                  fontWeight: '700',
-                  border: promptMode === 'homeless' ? '1px solid #2ea043' : '1px solid #30363d',
-                  cursor: 'pointer',
-                  transition: 'all 0.2s'
-                }}
-              >
-                🏚️ Homeless Media
-              </button>
-            </div>
-            
-            <textarea 
-              style={{ width: '100%', backgroundColor: '#0d1117', border: '1px solid #30363d', color: '#e6edf3', padding: '12px', borderRadius: '10px', fontSize: '13px', minHeight: '280px', outline: 'none', marginBottom: '12px', boxSizing: 'border-box', resize: 'vertical' }}
-              value={promptTeks} onChange={(e) => setPromptTeks(e.target.value)}
-            />
-            <div style={{ display: 'flex', gap: '10px' }}>
-              <button style={{ width: '35%', backgroundColor: '#21262d', color: '#c9d1d9', padding: '12px', borderRadius: '10px', fontWeight: '600', fontSize: '13px', border: '1px solid #30363d', cursor: 'pointer' }} onClick={() => setCurrentPage(1)}>⬅ Kembali</button>
-              <button style={{ width: '65%', backgroundColor: '#1f6feb', color: '#ffffff', padding: '12px', borderRadius: '10px', fontWeight: '600', fontSize: '13px', border: 'none', cursor: 'pointer' }} onClick={() => setCurrentPage(3)}>Ke Visual Editor ➔</button>
-            </div>
-          </div>
-        )}
-
-        {currentPage === 3 && (
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '24px' }}>
-            
-            <div style={{ backgroundColor: '#0d1117', border: '1px solid #30363d', borderRadius: '12px', padding: '20px', display: 'flex', flexDirection: 'column', gap: '20px' }}>
-              
-              <div style={{ display: 'flex', gap: '24px', alignItems: 'flex-start', justifyContent: 'center', flexWrap: 'wrap' }}>
-                <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
-                  <h2 style={{ fontSize: '14px', fontWeight: '700', marginBottom: '12px', color: '#8b949e', textAlign: 'center', letterSpacing: '1px' }}>
-                    LIVE PREVIEW (1080 x 1350)
-                  </h2>
-                  <div style={{ border: '2px dashed #30363d', borderRadius: '10px', padding: '8px', cursor: isDragging ? 'grabbing' : 'grab', backgroundColor: '#161b22' }}>
-                    <canvas 
-                      ref={canvasRef} width="1080" height="1350" 
-                      onMouseDown={handleMouseDown} onMouseMove={handleMouseMove} onMouseUp={handleMouseUp} onMouseLeave={handleMouseUp}
-                      onTouchStart={handleMouseDown} onTouchMove={handleMouseMove} onTouchEnd={handleMouseUp} onWheel={handleWheel}
-                      style={{ width: '280px', height: 'auto', borderRadius: '6px', display: 'block', touchAction: 'none' }}
-                    ></canvas>
-                  </div>
-                  <div style={{ fontSize: '10px', color: '#6e7681', marginTop: '8px', textAlign: 'center' }}>Garis abu putus = margin 1.5cm (85px) - hanya preview</div>
-                </div>
-
-                <div style={{ display: 'flex', flexDirection: 'column', gap: '12px', width: '300px', marginTop: '28px' }}>
-                  <div style={{ backgroundColor: '#161b22', padding: '16px', borderRadius: '10px', border: '1px solid #30363d' }}>
-                    <label style={{ fontSize: '11px', fontWeight: '700', color: '#3fb950', display: 'block', marginBottom: '8px' }}>🖼️ UPLOAD FOTO BERITA</label>
-                    <input type="file" accept="image/*" onChange={handleUploadFoto} style={{ fontSize: '11px', color: '#c9d1d9', width: '100%' }} />
-                  </div>
-
-                  <div style={{ backgroundColor: '#161b22', padding: '16px', borderRadius: '10px', border: '1px solid #f0883e' }}>
-                    <label style={{ fontSize: '11px', fontWeight: '700', color: '#f0883e', display: 'block', marginBottom: '6px' }}>🎨 UPLOAD MEDIA (Template)</label>
-                    <div style={{ fontSize: '10px', color: '#8b949e', marginBottom: '8px', lineHeight: '1.3' }}>
-                      Ganti template preview. Wajib ukuran <strong style={{color: '#f0883e'}}>1080 x 1350</strong> (IG Post).
-                    </div>
-                    <input type="file" accept="image/*" onChange={handleUploadTemplate} style={{ fontSize: '11px', color: '#c9d1d9', width: '100%' }} />
-                    
-                    <div style={{ display: 'flex', gap: '6px', marginTop: '12px' }}>
-                      <button
-                        onClick={() => {
-                          setTemplateMode('agoravada');
-                          const def = TEMPLATE_DEFAULTS.agoravada;
-                          setTeksX(def.teksX);
-                          setTeksY(def.teksY);
-                          setUkuranFont(def.ukuranFont);
-                          setJarakBaris(def.jarakBaris);
-                          setSumberX(def.sumberX);
-                          setSumberY(def.sumberY);
-                          setUkuranFontSumber(def.ukuranFontSumber);
-                          const tImg = new Image();
-                          tImg.src = '/Agora Vada Template.png';
-                          tImg.onload = () => setTemplateImgObj(tImg);
-                          tImg.onerror = () => alert('Gagal load Agora Vada Template.png - pastikan file ada di public/');
-                        }}
-                        style={{
-                          flex: 1,
-                          backgroundColor: templateMode === 'agoravada' ? '#f0883e' : '#21262d',
-                          color: templateMode === 'agoravada' ? '#000' : '#c9d1d9',
-                          padding: '8px 6px',
-                          borderRadius: '6px',
-                          fontSize: '10px',
-                          fontWeight: '700',
-                          border: templateMode === 'agoravada' ? '1px solid #f0883e' : '1px solid #30363d',
-                          cursor: 'pointer'
-                        }}
-                      >
-                        🏚️ Agora Vada
-                      </button>
-                      <button
-                        onClick={() => {
-                          setTemplateMode('agentlondo');
-                          const def = TEMPLATE_DEFAULTS.agentlondo;
-                          setTeksX(def.teksX);
-                          setTeksY(def.teksY);
-                          setUkuranFont(def.ukuranFont);
-                          setJarakBaris(def.jarakBaris);
-                          setSumberX(def.sumberX);
-                          setSumberY(def.sumberY);
-                          setUkuranFontSumber(def.ukuranFontSumber);
-                          const tryLoadAgentLondo = (urls, index = 0) => {
-                            if (index >= urls.length) {
-                              alert('Gagal load template Agent Londo. Pastikan file AgentLondo.png atau Agent Londo Template.png ada di public/');
-                              return;
-                            }
-                            const tImg = new Image();
-                            tImg.onload = () => setTemplateImgObj(tImg);
-                            tImg.onerror = () => tryLoadAgentLondo(urls, index + 1);
-                            tImg.src = urls[index];
-                          };
-                          tryLoadAgentLondo(['/AgentLondo.png', '/Agent Londo.png', '/AgentLondo Template.png', '/Agent Londo Template.png', '/AgentLondoTemplate.png']);
-                        }}
-                        style={{
-                          flex: 1,
-                          backgroundColor: templateMode === 'agentlondo' ? '#58a6ff' : '#21262d',
-                          color: templateMode === 'agentlondo' ? '#fff' : '#c9d1d9',
-                          padding: '8px 6px',
-                          borderRadius: '6px',
-                          fontSize: '10px',
-                          fontWeight: '700',
-                          border: templateMode === 'agentlondo' ? '1px solid #58a6ff' : '1px solid #30363d',
-                          cursor: 'pointer'
-                        }}
-                      >
-                        🕵️ Agent Londo
-                      </button>
-                    </div>
-                  </div>
-                </div>
+    <div style={{minHeight:'100vh',backgroundColor:'#0d1117',color:'#e6edf3',fontFamily:'system-ui',padding:'20px'}}>
+      {currentPage===3 && (
+        <div>
+          <div style={{display:'flex',gap:'20px',flexWrap:'wrap',maxWidth:'950px',margin:'0 auto'}}>
+            <div style={{flex:'1',minWidth:'350px'}}>
+              <div style={{backgroundColor:'#161b22',padding:'12px',borderRadius:'12px',border:'1px solid #30363d',display:'flex',flexDirection:'column',alignItems:'center'}}>
+                <div style={{fontSize:'11px',color:'#8b949e',marginBottom:'8px'}}>LIVE PREVIEW (1080 x 1350) - drag untuk geser</div>
+                <div style={{border:'2px dashed #30363d',borderRadius:'12px',overflow:'hidden'}}><canvas ref={canvasRef} width={1080} height={1350} style={{width:'320px',height:'400px',cursor:'grab',display:'block'}} onMouseDown={handleMouseDown} onMouseMove={handleMouseMove} onMouseUp={handleMouseUp} onMouseLeave={handleMouseUp} onTouchStart={handleMouseDown} onTouchMove={handleMouseMove} onTouchEnd={handleMouseUp} /></div>
+                <div style={{marginTop:'8px',fontSize:'10px',color:'#6e7681'}}>Garis abu = margin 1.5cm (85px) hanya preview</div>
               </div>
             </div>
-
-            
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '20px' }}>
-              
-              <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
-                
-                <div style={{ backgroundColor: '#0d1117', padding: '16px', borderRadius: '12px', border: '1px solid #30363d' }}>
-                  <label style={{ fontSize: '11px', fontWeight: '700', color: '#a371f7', display: 'block', marginBottom: '10px', letterSpacing: '1px' }}>📝 EDIT JUDUL</label>
-                  
-                  <div style={{ display: 'flex', gap: '8px', marginBottom: '10px', alignItems: 'center', flexWrap: 'wrap' }}>
-                    <button onClick={() => handleFormat('foreColor', '#E7E820')} style={{ backgroundColor: '#E7E820', color: '#000', padding: '6px 12px', borderRadius: '6px', fontSize: '11px', fontWeight: 'bold', cursor: 'pointer', border: 'none' }}>Kuning</button>
-                    <button onClick={() => handleFormat('italic')} style={{ backgroundColor: '#21262d', color: '#fff', padding: '6px 14px', borderRadius: '6px', fontSize: '12px', fontWeight: 'bold', fontStyle: 'italic', cursor: 'pointer', border: '1px solid #30363d' }}>I</button>
-                    <div style={{ width: '1px', height: '16px', backgroundColor: '#30363d', margin: '0 4px' }}></div>
-                    <button onClick={() => handleFormat('foreColor', '#ffffff')} style={{ backgroundColor: 'transparent', color: '#c9d1d9', padding: '6px 10px', borderRadius: '6px', fontSize: '10px', cursor: 'pointer', border: '1px solid #30363d' }}>Teks Dasar</button>
-                    <div style={{ width: '1px', height: '16px', backgroundColor: '#30363d', margin: '0 4px' }}></div>
-                    <button onClick={() => setTeksAlign('left')} style={{ backgroundColor: teksAlign === 'left' ? '#a371f7' : '#21262d', color: teksAlign === 'left' ? '#fff' : '#c9d1d9', padding: '6px 8px', borderRadius: '6px', fontSize: '12px', cursor: 'pointer', border: teksAlign === 'left' ? '1px solid #a371f7' : '1px solid #30363d' }}>☰</button>
-                    <button onClick={() => setTeksAlign('center')} style={{ backgroundColor: teksAlign === 'center' ? '#a371f7' : '#21262d', color: teksAlign === 'center' ? '#fff' : '#c9d1d9', padding: '6px 8px', borderRadius: '6px', fontSize: '12px', cursor: 'pointer', border: teksAlign === 'center' ? '1px solid #a371f7' : '1px solid #30363d' }}>≡</button>
-                    <button onClick={() => setTeksAlign('right')} style={{ backgroundColor: teksAlign === 'right' ? '#a371f7' : '#21262d', color: teksAlign === 'right' ? '#fff' : '#c9d1d9', padding: '6px 8px', borderRadius: '6px', fontSize: '12px', cursor: 'pointer', border: teksAlign === 'right' ? '1px solid #a371f7' : '1px solid #30363d' }}>☰</button>
-                    <button onClick={() => setTeksAlign('justify')} style={{ backgroundColor: teksAlign === 'justify' ? '#a371f7' : '#21262d', color: teksAlign === 'justify' ? '#fff' : '#c9d1d9', padding: '6px 8px', borderRadius: '6px', fontSize: '12px', cursor: 'pointer', border: teksAlign === 'justify' ? '1px solid #a371f7' : '1px solid #30363d' }}>≣</button>
-                  </div>
-
-                  <div 
-                    id="judul-editor"
-                    contentEditable
-                    onInput={(e) => setJudulHtml(e.currentTarget.innerHTML)}
-                    style={{ 
-                      width: '100%', 
-                      maxWidth: '100%',
-                      backgroundColor: '#161b22', 
-                      border: '1px solid #30363d', 
-                      color: '#ffffff', 
-                      padding: '12px', 
-                      borderRadius: '8px', 
-                      fontSize: '14px', 
-                      minHeight: '110px', 
-                      maxHeight: '280px',
-                      outline: 'none', 
-                      boxSizing: 'border-box', 
-                      overflowY: 'auto',
-                      overflowX: 'hidden',
-                      lineHeight: '1.5',
-                      whiteSpace: 'pre-wrap',
-                      wordBreak: 'break-all',
-                      overflowWrap: 'anywhere',
-                      textAlign: teksAlign
-                    }}
-                  />
+            <div style={{flex:'1',minWidth:'340px'}}>
+              <div style={{backgroundColor:'#0d1117',padding:'16px',borderRadius:'12px',border:'1px solid #30363d',marginBottom:'12px'}}>
+                <label style={{fontSize:'11px',fontWeight:'700',color:'#a371f7',display:'block',marginBottom:'10px'}}>📝 EDIT JUDUL</label>
+                <div style={{display:'flex',gap:'8px',marginBottom:'10px',flexWrap:'wrap'}}>
+                  <button onClick={()=>handleFormat('foreColor','#E7E820')} style={{backgroundColor:'#E7E820',color:'#000',padding:'6px 12px',borderRadius:'6px',fontSize:'11px',fontWeight:'bold',cursor:'pointer',border:'none'}}>Kuning</button>
+                  <button onClick={()=>handleFormat('italic')} style={{backgroundColor:'#21262d',color:'#fff',padding:'6px 14px',borderRadius:'6px',fontSize:'12px',fontStyle:'italic',cursor:'pointer',border:'1px solid #30363d'}}>I</button>
+                  <button onClick={()=>setTeksAlign('justify')} style={{backgroundColor:teksAlign==='justify'?'#a371f7':'#21262d',color:'#fff',padding:'6px 8px',borderRadius:'6px',fontSize:'12px',cursor:'pointer',border:'1px solid #30363d'}}>≣ Justify</button>
                 </div>
-
-                <div style={{ backgroundColor: '#0d1117', padding: '16px', borderRadius: '12px', border: '1px solid #30363d' }}>
-                  <label style={{ fontSize: '11px', fontWeight: '700', color: '#f78166', display: 'block', marginBottom: '10px', letterSpacing: '1px' }}>🔗 SUMBER BERITA</label>
-                  <div style={{ display: 'flex', gap: '8px', marginBottom: '10px', alignItems: 'center' }}>
-                    <button onClick={() => setSumberColor('#E7E820')} style={{ backgroundColor: '#E7E820', color: '#000', padding: '6px 12px', borderRadius: '6px', fontSize: '11px', fontWeight: 'bold', cursor: 'pointer', border: sumberColor === '#E7E820' ? '2px solid #fff' : 'none' }}>Kuning</button>
-                    <button onClick={() => setSumberColor('#8b949e')} style={{ backgroundColor: '#8b949e', color: '#fff', padding: '6px 12px', borderRadius: '6px', fontSize: '11px', fontWeight: 'bold', cursor: 'pointer', border: sumberColor === '#8b949e' ? '2px solid #fff' : '1px solid #30363d' }}>Abu Tua</button>
-                    <div style={{ width: '1px', height: '16px', backgroundColor: '#30363d', margin: '0 4px' }}></div>
-                    <button onClick={() => setSumberColor('#ffffff')} style={{ backgroundColor: 'transparent', color: '#c9d1d9', padding: '6px 10px', borderRadius: '6px', fontSize: '10px', cursor: 'pointer', border: sumberColor === '#ffffff' ? '2px solid #fff' : '1px solid #30363d' }}>Putih Dasar</button>
-                  </div>
-                  <input 
-                    type="text" 
-                    style={{ width: '100%', backgroundColor: '#161b22', border: '1px solid #30363d', color: '#ffffff', padding: '10px', borderRadius: '8px', fontSize: '13px', outline: 'none', boxSizing: 'border-box' }}
-                    value={sumberBerita}
-                    onChange={(e) => setSumberBerita(e.target.value)}
-                  />
-                </div>
-
-                <div style={{ backgroundColor: '#0d1117', padding: '12px 16px', borderRadius: '12px', border: '1px solid #30363d' }}>
-                  <label style={{ fontSize: '11px', fontWeight: '700', color: '#f78166', display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px' }}>
-                    <span>📍 KONTROL SUMBER BERITA</span>
-                    <button onClick={() => { const def = TEMPLATE_DEFAULTS[templateMode]; setSumberX(def.sumberX); setSumberY(def.sumberY); setUkuranFontSumber(def.ukuranFontSumber); }} style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: '14px', padding: 0 }}>🔄</button>
-                  </label>
-                  <div style={{ display: 'grid', gridTemplateColumns: '1fr', gap: '8px' }}>
-                    <div>
-                      <span style={{ fontSize: '10px', color: '#8b949e', display: 'flex', justifyContent: 'space-between' }}><span>Ukuran Font</span> <span>{ukuranFontSumber}</span></span>
-                      <input type="range" min="15" max="150" step="1" value={ukuranFontSumber} onChange={(e) => setUkuranFontSumber(parseInt(e.target.value))} style={{ width: '100%', accentColor: '#f78166' }} />
-                    </div>
-                    <div style={{ display: 'flex', gap: '8px' }}>
-                      <div style={{ flex: 1 }}>
-                        <span style={{ fontSize: '10px', color: '#8b949e', display: 'flex', justifyContent: 'space-between' }}><span>Geser X</span> <span>{sumberX}</span></span>
-                        <input type="range" min={MARGIN_PX} max={1000} step="1" value={sumberX} onChange={(e) => setSumberX(parseInt(e.target.value))} style={{ width: '100%', accentColor: '#f78166' }} />
-                      </div>
-                      <div style={{ flex: 1 }}>
-                        <span style={{ fontSize: '10px', color: '#8b949e', display: 'flex', justifyContent: 'space-between' }}><span>Geser Y</span> <span>{sumberY}</span></span>
-                        <input type="range" min="0" max="1350" step="1" value={sumberY} onChange={(e) => setSumberY(parseInt(e.target.value))} style={{ width: '100%', accentColor: '#f78166' }} />
-                      </div>
-                    </div>
-                  </div>
-                </div>
-
+                <div id="judul-editor" contentEditable onInput={e=>setJudulHtml(e.currentTarget.innerHTML)} style={{width:'100%',backgroundColor:'#161b22',border:'1px solid #30363d',color:'#fff',padding:'12px',borderRadius:'8px',fontSize:'14px',minHeight:'110px',maxHeight:'280px',outline:'none',boxSizing:'border-box',overflowY:'auto',whiteSpace:'pre-wrap',wordBreak:'break-all',overflowWrap:'anywhere',textAlign:teksAlign}} />
               </div>
-
-              <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
-                
-                <div style={{ backgroundColor: '#0d1117', padding: '12px 16px', borderRadius: '12px', border: '1px solid #30363d' }}>
-                  <label style={{ fontSize: '11px', fontWeight: '700', color: '#3fb950', display: 'block', marginBottom: '8px' }}>🖼️ KONTROL SKALA GAMBAR</label>
-                  <div style={{ display: 'grid', gridTemplateColumns: '1fr', gap: '8px' }}>
-                    <div>
-                      <span style={{ fontSize: '10px', color: '#8b949e', display: 'flex', justifyContent: 'space-between' }}><span>Zoom Skala</span> <span>{imgScale.toFixed(2)}</span></span>
-                      <input type="range" min="0.2" max="3" step="0.05" value={imgScale} onChange={(e) => setImgScale(parseFloat(e.target.value))} style={{ width: '100%', accentColor: '#3fb950' }} />
-                    </div>
-                    <div>
-                      <span style={{ fontSize: '10px', color: '#8b949e', display: 'flex', justifyContent: 'space-between' }}><span>Geser X</span> <span>{imgX}</span></span>
-                      <input type="range" min="-1000" max="1000" step="10" value={imgX} onChange={(e) => setImgX(parseInt(e.target.value))} style={{ width: '100%', accentColor: '#3fb950' }} />
-                    </div>
-                    <div>
-                      <span style={{ fontSize: '10px', color: '#8b949e', display: 'flex', justifyContent: 'space-between' }}><span>Geser Y</span> <span>{imgY}</span></span>
-                      <input type="range" min="-1000" max="1000" step="10" value={imgY} onChange={(e) => setImgY(parseInt(e.target.value))} style={{ width: '100%', accentColor: '#3fb950' }} />
-                    </div>
-                  </div>
+              <div style={{backgroundColor:'#0d1117',padding:'12px',borderRadius:'12px',border:'1px solid #30363d'}}>
+                <label style={{fontSize:'10px',fontWeight:'700',color:'#a371f7'}}>KONTROL POSISI JUDUL</label>
+                <label style={{fontSize:'10px',color:'#8b949e',display:'flex',justifyContent:'space-between',marginTop:'8px'}}><span>Ukuran Font</span><span>{ukuranFont}</span></label>
+                <input type="range" min={10} max={200} value={ukuranFont} onChange={e=>setUkuranFont(parseInt(e.target.value))} style={{width:'100%'}} />
+                <div style={{display:'grid',gridTemplateColumns:'1fr 1fr 1fr',gap:'8px',marginTop:'12px'}}>
+                  <button onClick={()=>setCurrentPage(1)} style={{padding:'10px',borderRadius:'8px',backgroundColor:'#21262d',color:'#fff',border:'1px solid #30363d',cursor:'pointer',fontSize:'11px'}}>⬅ Kembali</button>
+                  <button onClick={downloadGambar} style={{padding:'10px',borderRadius:'8px',backgroundColor:'#238636',color:'#fff',border:'none',cursor:'pointer',fontWeight:'700',fontSize:'11px'}}>📥 Download</button>
+                  <button onClick={handleTapUploadButton} style={{padding:'10px',borderRadius:'8px',backgroundColor:'#1f6feb',color:'#fff',border:'none',cursor:'pointer',fontWeight:'700',fontSize:'11px'}}>☁️ Upload</button>
                 </div>
-
-                <div style={{ backgroundColor: '#0d1117', padding: '12px 16px', borderRadius: '12px', border: '1px solid #30363d' }}>
-                  <label style={{ fontSize: '11px', fontWeight: '700', color: '#a371f7', display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px' }}>
-                    <span>✨ KONTROL POSISI JUDUL</span>
-                    <button onClick={() => { const def = TEMPLATE_DEFAULTS[templateMode]; setTeksX(def.teksX); setTeksY(def.teksY); setUkuranFont(def.ukuranFont); setJarakBaris(def.jarakBaris); }} style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: '14px', padding: 0 }}>🔄</button>
-                  </label>
-                  <div style={{ display: 'grid', gridTemplateColumns: '1fr', gap: '8px' }}>
-                    <div>
-                      <span style={{ fontSize: '10px', color: '#8b949e', display: 'flex', justifyContent: 'space-between' }}><span>Ukuran Font</span> <span>{ukuranFont}</span></span>
-                      <input type="range" min="30" max="400" step="1" value={ukuranFont} onChange={(e) => setUkuranFont(parseInt(e.target.value))} style={{ width: '100%', accentColor: '#a371f7' }} />
-                    </div>
-                    <div>
-                      <span style={{ fontSize: '10px', color: '#8b949e', display: 'flex', justifyContent: 'space-between' }}><span>Geser X (Min {MARGIN_PX}px = 1.5cm)</span> <span>{teksX}</span></span>
-                      <input type="range" min={MARGIN_PX} max={1080 - MARGIN_PX - 100} step="1" value={teksX} onChange={(e) => setTeksX(parseInt(e.target.value))} style={{ width: '100%', accentColor: '#a371f7' }} />
-                    </div>
-                    <div>
-                      <span style={{ fontSize: '10px', color: '#8b949e', display: 'flex', justifyContent: 'space-between' }}><span>Geser Y (Min {MARGIN_PX}px)</span> <span>{teksY}</span></span>
-                      <input type="range" min={MARGIN_PX} max={1350 - MARGIN_PX - 100} step="1" value={teksY} onChange={(e) => setTeksY(parseInt(e.target.value))} style={{ width: '100%', accentColor: '#a371f7' }} />
-                    </div>
-                    <div style={{ marginTop: '4px', paddingTop: '8px', borderTop: '1px dashed #30363d' }}>
-                      <span style={{ fontSize: '10px', color: '#8b949e', display: 'flex', justifyContent: 'space-between' }}><span>Jarak Antar Kalimat</span> <span>{jarakBaris}</span></span>
-                      <input type="range" min="0.8" max="2.5" step="0.1" value={jarakBaris} onChange={(e) => setJarakBaris(parseFloat(e.target.value))} style={{ width: '100%', accentColor: '#a371f7' }} />
-                    </div>
-                  </div>
-
-                  <div style={{ display: 'flex', gap: '8px', marginTop: '14px', paddingTop: '12px', borderTop: '1px solid #30363d' }}>
-                    <button style={{ width: '25%', backgroundColor: '#21262d', color: '#c9d1d9', padding: '10px', borderRadius: '8px', fontWeight: '600', fontSize: '11px', border: '1px solid #30363d', cursor: 'pointer' }} onClick={() => setCurrentPage(2)}>⬅ Kembali</button>
-                    <button style={{ width: '37%', backgroundColor: '#238636', color: '#ffffff', padding: '10px', borderRadius: '8px', fontWeight: '700', fontSize: '11px', border: 'none', cursor: 'pointer' }} onClick={downloadGambar}>📥 Download</button>
-                    <button style={{ width: '38%', backgroundColor: '#1f6feb', color: '#ffffff', padding: '10px', borderRadius: '8px', fontWeight: '700', fontSize: '11px', border: 'none', cursor: 'pointer' }} onClick={handleTapUploadButton}>📤 Upload</button>
-                  </div>
-                </div>
-
               </div>
             </div>
           </div>
-        )}
+        </div>
+      )}
 
-        {currentPage === 4 && (
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
-            <h2 style={{ fontSize: '15px', fontWeight: '700', color: '#c9d1d9', borderBottom: '1px solid #30363d', paddingBottom: '8px' }}>4. Review & Publish</h2>
-            
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '20px' }}>
-              <div style={{ backgroundColor: '#0d1117', border: '1px solid #30363d', borderRadius: '12px', padding: '12px' }}>
-                <label style={{ fontSize: '11px', fontWeight: '700', color: '#8b949e', display: 'block', marginBottom: '10px', letterSpacing: '1px' }}>PREVIEW GAMBAR (TANPA GARIS MARGIN)</label>
-                {reviewImageUrl ? (
-                  <img src={reviewImageUrl} alt="Review" style={{ width: '100%', borderRadius: '8px', border: '1px solid #30363d' }} />
-                ) : (
-                  <div style={{ width: '100%', height: '200px', backgroundColor: '#161b22', borderRadius: '8px', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#6e7681', fontSize: '12px' }}>Tidak ada gambar</div>
-                )}
-                <div style={{ fontSize: '10px', color: '#6e7681', marginTop: '8px', textAlign: 'center' }}>1080 x 1350 - siap upload</div>
+      {currentPage===4 && (
+        <div style={{maxWidth:'1100px',margin:'0 auto'}}>
+          <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',marginBottom:'20px'}}>
+            <h2 style={{fontSize:'22px',fontWeight:'800'}}>👀 REVIEW & PUBLISH - {1+additionalSlides.length} Slide</h2>
+            <button onClick={()=>setCurrentPage(3)} style={{padding:'8px 14px',borderRadius:'8px',backgroundColor:'#21262d',border:'1px solid #30363d',color:'#fff',cursor:'pointer'}}>⬅ Editor</button>
+          </div>
+          <div style={{display:'grid',gridTemplateColumns:'400px 1fr',gap:'20px'}}>
+            <div>
+              <div style={{backgroundColor:'#161b22',padding:'12px',borderRadius:'12px',border:'1px solid #30363d',marginBottom:'12px'}}>
+                <div style={{fontSize:'11px',color:'#8b949e',marginBottom:'8px'}}>Preview Slide {currentPreviewSlide+1} / {1+additionalSlides.length}</div>
+                {currentPreviewSlide===0? reviewImageUrl && <img src={reviewImageUrl} style={{width:'100%',borderRadius:'8px'}} alt="slide1" /> : additionalSlides[currentPreviewSlide-1] && (additionalSlides[currentPreviewSlide-1].type==='video'? <video src={additionalSlides[currentPreviewSlide-1].previewUrl} style={{width:'100%',borderRadius:'8px'}} controls /> : <img src={additionalSlides[currentPreviewSlide-1].previewUrl} style={{width:'100%',borderRadius:'8px'}} alt="slide" />)}
+                <div style={{display:'flex',gap:'6px',marginTop:'10px',justifyContent:'center'}}>{[reviewImageUrl,...additionalSlides.map(s=>s.previewUrl)].map((_,i)=>(<button key={i} onClick={()=>setCurrentPreviewSlide(i)} style={{width:'8px',height:'8px',borderRadius:'50%',backgroundColor:currentPreviewSlide===i?'#1f6feb':'#30363d',border:'none',cursor:'pointer'}} />))}</div>
+                <div style={{display:'flex',gap:'8px',marginTop:'10px'}}><button onClick={()=>setCurrentPreviewSlide(p=>Math.max(0,p-1))} style={{flex:1,padding:'6px',borderRadius:'6px',backgroundColor:'#21262d',border:'1px solid #30363d',color:'#fff',cursor:'pointer'}}>◀</button><button onClick={()=>setCurrentPreviewSlide(p=>Math.min(additionalSlides.length,p+1))} style={{flex:1,padding:'6px',borderRadius:'6px',backgroundColor:'#21262d',border:'1px solid #30363d',color:'#fff',cursor:'pointer'}}>▶</button></div>
               </div>
 
-              <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
-                <div style={{ backgroundColor: '#0d1117', border: '1px solid #30363d', borderRadius: '12px', padding: '16px', flex: 1, display: 'flex', flexDirection: 'column' }}>
-                  <label style={{ fontSize: '11px', fontWeight: '700', color: '#58a6ff', display: 'block', marginBottom: '10px', letterSpacing: '1px' }}>CAPTION INSTAGRAM</label>
-                  <textarea 
-                    style={{ width: '100%', flex: 1, minHeight: '280px', backgroundColor: '#161b22', border: '1px solid #30363d', color: '#e6edf3', padding: '12px', borderRadius: '8px', fontSize: '13px', outline: 'none', boxSizing: 'border-box', resize: 'vertical', lineHeight: '1.5' }}
-                    value={captionText}
-                    onChange={(e) => setCaptionText(e.target.value)}
-                    placeholder="Tulis caption Instagram di sini..."
-                  />
-                  <div style={{ fontSize: '10px', color: '#6e7681', marginTop: '8px' }}>{captionText.length} karakter</div>
+              <div style={{backgroundColor:'#0d1117',padding:'12px',borderRadius:'12px',border:'1px solid #30363d'}}>
+                <label style={{fontSize:'11px',fontWeight:'700',color:'#58a6ff',display:'block',marginBottom:'8px'}}>🎞️ SLIDE TAMBAHAN (Foto/Video)</label>
+                <input type="file" multiple accept="image/*,video/*" onChange={handleAdditionalFiles} style={{fontSize:'11px',marginBottom:'10px'}} />
+                <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:'8px',maxHeight:'200px',overflowY:'auto'}}>
+                  {additionalSlides.map((s,idx)=>(
+                    <div key={s.id} style={{backgroundColor:'#161b22',border:'1px solid #30363d',borderRadius:'8px',padding:'6px',position:'relative'}}>
+                      <div style={{fontSize:'10px',color:'#8b949e'}}>Slide {idx+2} {s.type==='video'?'📹':''}</div>
+                      {s.type==='video'?<video src={s.previewUrl} style={{width:'100%',height:'60px',objectFit:'cover',borderRadius:'4px'}} />:<img src={s.previewUrl} style={{width:'100%',height:'60px',objectFit:'cover',borderRadius:'4px'}} />}
+                      <div style={{display:'flex',gap:'4px',marginTop:'4px'}}><button onClick={()=>moveSlide(idx,'up')} style={{fontSize:'10px',padding:'2px 6px',borderRadius:'4px',backgroundColor:'#21262d',border:'1px solid #30363d',color:'#fff',cursor:'pointer'}}>↑</button><button onClick={()=>moveSlide(idx,'down')} style={{fontSize:'10px',padding:'2px 6px',borderRadius:'4px',backgroundColor:'#21262d',border:'1px solid #30363d',color:'#fff',cursor:'pointer'}}>↓</button><button onClick={()=>removeSlide(s.id)} style={{fontSize:'10px',padding:'2px 6px',borderRadius:'4px',backgroundColor:'#f85149',border:'none',color:'#fff',cursor:'pointer'}}>X</button></div>
+                    </div>
+                  ))}
                 </div>
+                <div style={{fontSize:'10px',color:'#6e7681',marginTop:'8px'}}>{additionalSlides.length}/9 tambahan (total max 10)</div>
               </div>
             </div>
 
-            <div style={{ display: 'flex', gap: '10px' }}>
-              <button style={{ width: '35%', backgroundColor: '#21262d', color: '#c9d1d9', padding: '12px', borderRadius: '10px', fontWeight: '600', fontSize: '13px', border: '1px solid #30363d', cursor: 'pointer' }} onClick={() => setCurrentPage(3)}>⬅ Kembali Edit</button>
-              <button 
-                style={{ width: '65%', backgroundColor: isUploading ? '#1f2937' : '#1f6feb', color: '#ffffff', padding: '12px', borderRadius: '10px', fontWeight: '700', fontSize: '13px', border: 'none', cursor: isUploading ? 'not-allowed' : 'pointer', opacity: isUploading ? 0.6 : 1 }}
-                onClick={handlePublish}
-                disabled={isUploading}
-              >
-                {isUploading ? '⏳ Publishing...' : '🚀 Publish ke Instagram'}
-              </button>
+            <div>
+              <div style={{backgroundColor:'#0d1117',padding:'16px',borderRadius:'12px',border:'1px solid #30363d',marginBottom:'12px'}}>
+                <label style={{fontSize:'11px',fontWeight:'700',color:'#58a6ff',display:'block',marginBottom:'8px'}}>📝 CAPTION</label>
+                <textarea value={captionText} onChange={e=>setCaptionText(e.target.value)} style={{width:'100%',minHeight:'220px',backgroundColor:'#161b22',border:'1px solid #30363d',color:'#fff',padding:'12px',borderRadius:'8px',fontSize:'13px'}} />
+              </div>
+              <div style={{display:'flex',gap:'12px'}}>
+                <button onClick={()=>setCurrentPage(3)} style={{flex:1,padding:'14px',borderRadius:'10px',backgroundColor:'#21262d',border:'1px solid #30363d',color:'#fff',cursor:'pointer',fontWeight:'600'}}>⬅ Kembali</button>
+                <button onClick={handlePublish} disabled={isUploading} style={{flex:2,padding:'14px',borderRadius:'10px',backgroundColor:isUploading?'#30363d':'#238636',color:'#fff',border:'none',cursor:isUploading?'not-allowed':'pointer',fontWeight:'800'}}>{isUploading?`⏳ Uploading ${1+additionalSlides.length} slide...`:`🚀 Upload ${1+additionalSlides.length} Slide ke IG`}</button>
+              </div>
             </div>
           </div>
-        )}
+        </div>
+      )}
 
-      </div>
+      {(currentPage===1||currentPage===2) && (
+        <div style={{maxWidth:'480px',margin:'0 auto'}}>
+          <div style={{backgroundColor:'#161b22',border:'1px solid #30363d',borderRadius:'16px',padding:'24px'}}>
+            {currentPage===1 && (<><h2 style={{fontSize:'15px',fontWeight:'700',marginBottom:'16px'}}>1. Masukkan Link Berita</h2><input value={urlBerita} onChange={e=>setUrlBerita(e.target.value)} placeholder="https://..." style={{width:'100%',backgroundColor:'#0d1117',border:'1px solid #30363d',color:'#fff',padding:'12px',borderRadius:'10px',marginBottom:'16px',boxSizing:'border-box'}} /><button onClick={()=>setCurrentPage(3)} style={{width:'100%',padding:'12px',borderRadius:'10px',backgroundColor:'#238636',color:'#fff',border:'none',cursor:'pointer',fontWeight:'700'}}>Ke Editor →</button></>)}
+            {currentPage===2 && (<><h2>Hook</h2><button onClick={()=>setCurrentPage(3)}>Ke Visual →</button></>)}
+          </div>
+        </div>
+      )}
     </div>
   );
 }
