@@ -1,89 +1,73 @@
+import { NextResponse } from 'next/server';
+export const runtime = 'nodejs';
+
 export async function POST(req) {
   try {
-    const body = await req.json();
-    const items = body.items || []; // [{url, type: 'image'|'video'}]
-    const caption = body.caption || '';
+    const { items, caption } = await req.json();
+    const userId = process.env.IG_USER_ID;
+    const token = process.env.IG_ACCESS_TOKEN || process.env.IG_PAGE_ACCESS_TOKEN || process.env.IG_PAGE_TOKEN;
 
-    const IG_USER_ID = process.env.IG_USER_ID;
-    const TOKEN = process.env.IG_PAGE_ACCESS_TOKEN;
-
-    if (!IG_USER_ID ||!TOKEN) {
-      return Response.json({ error: 'ENV IG_USER_ID / IG_PAGE_ACCESS_TOKEN belum set di Vercel' }, { status: 500 });
+    if (!userId ||!token) {
+      return NextResponse.json({ error: 'ENV IG_USER_ID / IG_PAGE_ACCESS_TOKEN belum set di Vercel' }, { status: 500 });
     }
-    if (items.length === 0) {
-      return Response.json({ error: 'Tidak ada media' }, { status: 400 });
-    }
+    if (!items || items.length === 0) return NextResponse.json({ error: 'No items' }, { status: 400 });
 
-    // SINGLE POST
-    if (items.length === 1) {
-      const isVideo = items[0].type === 'video';
-      const endpoint = `https://graph.facebook.com/v20.0/${IG_USER_ID}/media`;
-      const payload = isVideo
-       ? { media_type: 'REELS', video_url: items[0].url, caption, access_token: TOKEN }
-        : { image_url: items[0].url, caption, access_token: TOKEN };
+    const base = `https://graph.facebook.com/v21.0/${userId}`;
 
-      const createRes = await fetch(endpoint, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(payload)
-      });
-      const createData = await createRes.json();
-      if (!createData.id) return Response.json(createData, { status: 400 });
+    // Bikin container tiap file
+    const containers = [];
+    for (let i = 0; i < items.length; i++) {
+      const isCarousel = items.length > 1;
+      const params = new URLSearchParams();
+      params.append('access_token', token);
+      if (isCarousel) params.append('is_carousel_item', 'true');
+      if (!isCarousel) params.append('caption', caption);
 
-      await new Promise(r => setTimeout(r, 3000));
+      if (items[i].type === 'video') {
+        params.append('media_type', 'VIDEO');
+        params.append('video_url', items[i].url);
+      } else {
+        params.append('image_url', items[i].url);
+      }
 
-      const pubRes = await fetch(`https://graph.facebook.com/v20.0/${IG_USER_ID}/media_publish`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ creation_id: createData.id, access_token: TOKEN })
-      });
-      const pubData = await pubRes.json();
-      return Response.json(pubData);
+      const r = await fetch(`${base}/media`, { method: 'POST', body: params });
+      const j = await r.json();
+      if (!r.ok ||!j.id) throw new Error(`Gagal bikin container ${i+1}: ${JSON.stringify(j)}`);
+      containers.push(j.id);
     }
 
-    // CAROUSEL (2-9)
-    const childIds = [];
-    for (const item of items) {
-      const isVideo = item.type === 'video';
-      const res = await fetch(`https://graph.facebook.com/v20.0/${IG_USER_ID}/media`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-         ...(isVideo? { media_type: 'VIDEO', video_url: item.url } : { image_url: item.url }),
-          is_carousel_item: true,
-          access_token: TOKEN
-        })
-      });
-      const data = await res.json();
-      if (!data.id) return Response.json({ error: 'Gagal bikin carousel item', detail: data }, { status: 400 });
-      childIds.push(data.id);
-      await new Promise(r => setTimeout(r, 1000));
+    let creationId;
+    if (items.length > 1) {
+      const p = new URLSearchParams();
+      p.append('access_token', token);
+      p.append('media_type', 'CAROUSEL');
+      p.append('children', containers.join(','));
+      p.append('caption', caption);
+      const r = await fetch(`${base}/media`, { method: 'POST', body: p });
+      const j = await r.json();
+      if (!r.ok ||!j.id) throw new Error(`Gagal bikin carousel: ${JSON.stringify(j)}`);
+      creationId = j.id;
+    } else {
+      creationId = containers[0];
     }
 
-    const carouselRes = await fetch(`https://graph.facebook.com/v20.0/${IG_USER_ID}/media`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        media_type: 'CAROUSEL',
-        children: childIds.join(','),
-        caption,
-        access_token: TOKEN
-      })
-    });
-    const carouselData = await carouselRes.json();
-    if (!carouselData.id) return Response.json(carouselData, { status: 400 });
+    // Tunggu kalo video biar ready (polling)
+    for (let i = 0; i < 20; i++) {
+      const s = await fetch(`${base.replace(userId, creationId)}?fields=status_code&access_token=${token}`);
+      const sj = await s.json();
+      if (sj.status_code === 'FINISHED' ||!sj.status_code) break;
+      await new Promise(res => setTimeout(res, 2000));
+    }
 
-    await new Promise(r => setTimeout(r, 3000));
+    const pubParams = new URLSearchParams();
+    pubParams.append('access_token', token);
+    pubParams.append('creation_id', creationId);
+    const pub = await fetch(`${base}/media_publish`, { method: 'POST', body: pubParams });
+    const pubJ = await pub.json();
+    if (!pub.ok) throw new Error(`Gagal publish: ${JSON.stringify(pubJ)}`);
 
-    const finalPub = await fetch(`https://graph.facebook.com/v20.0/${IG_USER_ID}/media_publish`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ creation_id: carouselData.id, access_token: TOKEN })
-    });
-    const finalData = await finalPub.json();
-    return Response.json(finalData);
-
+    return NextResponse.json({ id: pubJ.id });
   } catch (e) {
-    return Response.json({ error: e.message }, { status: 500 });
+    return NextResponse.json({ error: e.message }, { status: 500 });
   }
 }
