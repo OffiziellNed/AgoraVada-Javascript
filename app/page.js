@@ -9,14 +9,12 @@ export default function AgoraVadaPortal() {
   const [rawBeritaContent, setRawBeritaContent] = useState('');
   const [promptMode, setPromptMode] = useState('homeless');
   const [selectedHook, setSelectedHook] = useState('urgent');
-  // === TAMBAHAN PAGE 4 UPLOAD - START ===
   const [igCaption, setIgCaption] = useState('');
   const [carouselFiles, setCarouselFiles] = useState([]);
   const [carouselPreviews, setCarouselPreviews] = useState([]);
   const [uploadProgress, setUploadProgress] = useState(0);
   const [uploadStatus, setUploadStatus] = useState('idle');
   const [uploadStepText, setUploadStepText] = useState('');
-  // === TAMBAHAN PAGE 4 UPLOAD - END ===
 
   const [judulHtml, setJudulHtml] = useState('');
   const [sumberBerita, setSumberBerita] = useState('');
@@ -241,7 +239,7 @@ export default function AgoraVadaPortal() {
     link.href = canvas.toDataURL("image/jpeg", 0.95); link.click();
     setTimeout(() => { const ctx2 = canvas.getContext('2d'); renderCanvas(ctx2, canvas, true); }, 100);
   };
-  // === LOGIC PAGE 4 UPLOAD - START ===
+
   const stripHtml = (html) => { if (!html) return ''; const div = document.createElement('div'); div.innerHTML = html; return div.innerText || ''; };
   const openUploadPage = async () => {
     const canvas = canvasRef.current; if (!canvas) return;
@@ -281,17 +279,24 @@ export default function AgoraVadaPortal() {
           const fd=new FormData(); fd.append('file',file);
           const xhr=new XMLHttpRequest(); xhr.open('POST','/api/instagram/upload-image');
           xhr.upload.onprogress=(e)=>{ if(e.lengthComputable){ const base=(i/carouselFiles.length)*40; const cur=(e.loaded/e.total)*(40/carouselFiles.length); setUploadProgress(Math.round(5+base+cur)); setUploadStepText(`File ${i+1}/${carouselFiles.length}: ${Math.round(e.loaded/e.total*100)}%`);} };
-          xhr.onload=()=>{ try{ const d=JSON.parse(xhr.responseText); d.url?res(d.url):rej(d);}catch{rej('error')} }; xhr.onerror=()=>rej('network'); xhr.send(fd);
+          xhr.onload=()=>{
+            try{
+              const d=JSON.parse(xhr.responseText);
+              if(xhr.status>=200 && xhr.status<300 && d.url) res(d.url);
+              else rej(new Error(d.error || d.message || `Gagal upload ${xhr.status}: ${xhr.responseText.slice(0,150)}`));
+            }catch{ rej(new Error(`Server bukan JSON: ${xhr.responseText.slice(0,150)}`)); }
+          };
+          xhr.onerror=()=>rej(new Error('Network error - cek /api/instagram/upload-image ada?'));
+          xhr.send(fd);
         });
         uploaded.push({url,type:file.type.startsWith('video')?'video':'image'});
       }
-      setUploadProgress(50); setUploadStatus('creating'); setUploadStepText('Bikin container IG...');
+      setUploadProgress(55); setUploadStatus('creating'); setUploadStepText('Bikin container IG...');
       const r=await fetch('/api/instagram/publish',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({items:uploaded,caption:igCaption})});
-      const j=await r.json(); if(!r.ok) throw new Error(JSON.stringify(j));
+      const j=await r.json(); if(!r.ok) throw new Error(j.error || JSON.stringify(j));
       setUploadProgress(100); setUploadStatus('done'); setUploadStepText('✅ Berhasil publish ke Instagram!');
-    }catch(err){ setUploadStatus('error'); setUploadStepText('❌ '+err.message); }
+    }catch(err){ console.error(err); setUploadStatus('error'); setUploadStepText(err.message); }
   };
-  // === LOGIC PAGE 4 UPLOAD - END ===
 
   const handleCopyPrompt = () => {
     navigator.clipboard.writeText(promptTeks);
@@ -509,31 +514,31 @@ export default function AgoraVadaPortal() {
             </div>
             {uploadStatus!=='idle' && (
               <div style={{ backgroundColor: '#0d1117', padding: '12px', borderRadius: '10px', border: '1px solid #30363d' }}>
-                <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '6px' }}><span style={{ fontSize: '11px', color: '#8b949e' }}>{uploadStepText}</span><span style={{ fontSize: '11px', color: '#fff', fontWeight: 700 }}>{uploadProgress}%</span></div>
+                <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '6px' }}><span style={{ fontSize: '11px', color: uploadStatus==='error'?'#f85149':'#8b949e' }}>{uploadStepText}</span><span style={{ fontSize: '11px', color: '#fff', fontWeight: 700 }}>{uploadProgress}%</span></div>
                 <div style={{ width: '100%', height: '8px', backgroundColor: '#21262d', borderRadius: '4px', overflow: 'hidden' }}><div style={{ width: `${uploadProgress}%`, height: '100%', backgroundColor: uploadStatus==='error'?'#f85149':uploadStatus==='done'?'#3fb950':'#E1306C', transition: 'width 0.3s' }} /></div>
               </div>
             )}
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '20px' }}>
               <div>
-                <label style={{ fontSize: '11px', fontWeight: 700, color: '#c9d1d9', display: 'block', marginBottom: '8px' }}>Preview Final ({carouselPreviews.length}/9)</label>
-                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3,1fr)', gap: '8px', marginBottom: '12px' }}>
+                <label style={{ fontSize: '11px', fontWeight: 700, color: '#c9d1d9', display: 'block', marginBottom: '8px' }}>Preview Final ({carouselPreviews.length}/9) - Bentuk 1080x1350</label>
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2,1fr)', gap: '12px', marginBottom: '12px' }}>
                   {carouselPreviews.map((item,idx)=>(
-                    <div key={idx} style={{ position: 'relative', aspectRatio: '1/1', backgroundColor: '#0d1117', borderRadius: '8px', overflow: 'hidden', border: item.isMain?'2px solid #E1306C':'1px solid #30363d' }}>
-                      {item.type==='video'?<video src={item.url} style={{ width: '100%', height: '100%', objectFit: 'cover' }} muted />:<img src={item.url} style={{ width: '100%', height: '100%', objectFit: 'cover' }} alt={item.name} />}
-                      <div style={{ position: 'absolute', top: '4px', left: '4px', backgroundColor: 'rgba(0,0,0,0.7)', color: '#fff', fontSize: '9px', padding: '2px 6px', borderRadius: '4px' }}>{idx===0?'COVER':idx+1}</div>
-                      <button onClick={()=>removeCarouselItem(idx)} style={{ position: 'absolute', top: '4px', right: '4px', backgroundColor: '#f85149', color: '#fff', border: 'none', borderRadius: '50%', width: '20px', height: '20px', fontSize: '10px', cursor: 'pointer' }}>✕</button>
+                    <div key={idx} style={{ position: 'relative', aspectRatio: '1080/1350', backgroundColor: '#000', borderRadius: '10px', overflow: 'hidden', border: item.isMain?'2px solid #E1306C':'1px solid #30363d' }}>
+                      {item.type==='video'?<video src={item.url} style={{ width: '100%', height: '100%', objectFit: 'contain', backgroundColor: '#000' }} muted />:<img src={item.url} style={{ width: '100%', height: '100%', objectFit: 'contain', backgroundColor: '#000' }} alt={item.name} />}
+                      <div style={{ position: 'absolute', top: '6px', left: '6px', backgroundColor: 'rgba(0,0,0,0.75)', color: '#fff', fontSize: '10px', padding: '3px 7px', borderRadius: '5px', fontWeight: 700 }}>{idx===0?'COVER':idx+1}</div>
+                      <button onClick={()=>removeCarouselItem(idx)} style={{ position: 'absolute', top: '6px', right: '6px', backgroundColor: '#f85149', color: '#fff', border: 'none', borderRadius: '50%', width: '22px', height: '22px', fontSize: '11px', cursor: 'pointer', fontWeight: 700 }}>✕</button>
                     </div>
                   ))}
-                  {carouselPreviews.length<9 && <label style={{ aspectRatio: '1/1', border: '1px dashed #30363d', borderRadius: '8px', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', color: '#8b949e', fontSize: '11px', backgroundColor: '#0d1117' }}>＋Add<input type="file" accept="image/*,video/*" multiple onChange={handleAddCarouselFiles} style={{ display: 'none' }} /></label>}
+                  {carouselPreviews.length<9 && <label style={{ aspectRatio: '1080/1350', border: '1px dashed #30363d', borderRadius: '10px', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', color: '#8b949e', fontSize: '11px', backgroundColor: '#0d1117' }}>＋Add Foto/Video<input type="file" accept="image/*,video/*" multiple onChange={handleAddCarouselFiles} style={{ display: 'none' }} /></label>}
                 </div>
-                <input type="file" accept="image/*,video/*" multiple onChange={handleAddCarouselFiles} style={{ width: '100%', fontSize: '11px', color: '#c9d1d9' }} />
+                <div style={{ fontSize: '10px', color: '#8b949e', backgroundColor: '#161b22', padding: '8px 10px', borderRadius: '8px', border: '1px solid #21262d' }}>Gambar COVER = hasil canvas final tanpa garis abu 1.5cm, sudah 1080x1350.</div>
               </div>
               <div>
                 <label style={{ fontSize: '11px', fontWeight: 700, color: '#a371f7', display: 'block', marginBottom: '8px' }}>📝 Caption Instagram</label>
-                <textarea value={igCaption} onChange={(e)=>setIgCaption(e.target.value)} style={{ width: '100%', minHeight: '320px', backgroundColor: '#0d1117', border: '1px solid #30363d', color: '#e6edf3', padding: '12px', borderRadius: '10px', fontSize: '13px', outline: 'none', resize: 'vertical', boxSizing: 'border-box' }} />
+                <textarea value={igCaption} onChange={(e)=>setIgCaption(e.target.value)} style={{ width: '100%', minHeight: '360px', backgroundColor: '#0d1117', border: '1px solid #30363d', color: '#e6edf3', padding: '12px', borderRadius: '10px', fontSize: '13px', outline: 'none', resize: 'vertical', boxSizing: 'border-box' }} />
                 <div style={{ display: 'flex', gap: '8px', marginTop: '16px' }}>
                   <button onClick={()=>setCurrentPage(3)} style={{ flex: 1, backgroundColor: '#21262d', color: '#c9d1d9', padding: '12px', borderRadius: '10px', border: '1px solid #30363d', cursor: 'pointer', fontWeight: 600, fontSize: '12px' }}>Batal</button>
-                  <button onClick={uploadToInstagram} disabled={uploadStatus==='uploading'} style={{ flex: 2, backgroundColor: uploadStatus==='done'?'#238636':'#E1306C', color: '#fff', padding: '12px', borderRadius: '10px', fontWeight: 700, border: 'none', cursor: 'pointer', fontSize: '12px' }}>{uploadStatus==='done'?'✅ Berhasil!':`🚀 Upload (${uploadProgress}%)`}</button>
+                  <button onClick={uploadToInstagram} disabled={uploadStatus==='uploading' || uploadStatus==='creating'} style={{ flex: 2, backgroundColor: uploadStatus==='done'?'#238636':'#E1306C', color: '#fff', padding: '12px', borderRadius: '10px', fontWeight: 700, border: 'none', cursor: uploadStatus==='uploading'?'not-allowed':'pointer', opacity: uploadStatus==='uploading'?0.6:1, fontSize: '12px' }}>{uploadStatus==='done'?'✅ Berhasil Terpublish!':uploadStatus==='error'?'🔄 Coba Lagi':`🚀 Upload ke IG (${uploadProgress}%)`}</button>
                 </div>
               </div>
             </div>
