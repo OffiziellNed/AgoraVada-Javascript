@@ -1,18 +1,13 @@
 import { put } from '@vercel/blob';
-import { NextResponse } from 'next/server';
 
-export async function POST(request) {
-  try {
-    const formData = await request.formData();
-    const file = formData.get('file');
-    if (!file) {
-      return NextResponse.json({ error: 'No file provided' }, { status: 400 });
-    }
-    const blob = await put(`agoravada/${Date.now()}-${file.name}`, file, {
-      access: 'public',
-    });
-    return NextResponse.json({ url: blob.url });
-  } catch (error) {
-    return NextResponse.json({ error: error.message }, { status: 500 });
-  }
+export async function POST(req) {
+  const formData = await req.formData();
+  const file = formData.get('file');
+  if (!file) return Response.json({ error: 'No file' }, { status: 400 });
+
+  const blob = await put(`agoravada-${Date.now()}.jpg`, file, {
+    access: 'public',
+  });
+
+  return Response.json({ url: blob.url });
 }
