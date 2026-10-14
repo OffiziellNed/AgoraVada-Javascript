@@ -9,13 +9,14 @@ export default function AgoraVadaPortal() {
   const [rawBeritaContent, setRawBeritaContent] = useState('');
   const [promptMode, setPromptMode] = useState('homeless');
   const [selectedHook, setSelectedHook] = useState('urgent');
-  // === TAMBAHAN PAGE 4 - CUMA INI YANG BARU ===
+  // === TAMBAHAN PAGE 4 UPLOAD - START ===
   const [igCaption, setIgCaption] = useState('');
   const [carouselFiles, setCarouselFiles] = useState([]);
   const [carouselPreviews, setCarouselPreviews] = useState([]);
   const [uploadProgress, setUploadProgress] = useState(0);
   const [uploadStatus, setUploadStatus] = useState('idle');
   const [uploadStepText, setUploadStepText] = useState('');
+  // === TAMBAHAN PAGE 4 UPLOAD - END ===
 
   const [judulHtml, setJudulHtml] = useState('');
   const [sumberBerita, setSumberBerita] = useState('');
@@ -81,7 +82,8 @@ export default function AgoraVadaPortal() {
       const proxies = [
         `https://api.allorigins.win/raw?url=${encodeURIComponent(imageUrl)}`,
         `https://wsrv.nl/?url=${encodeURIComponent(imageUrl)}`,
-        `https://corsproxy.io/?${encodeURIComponent(imageUrl)}`, imageUrl
+        `https://corsproxy.io/?${encodeURIComponent(imageUrl)}`,
+        imageUrl
       ];
       for (let proxy of proxies) {
         try { const img = await tryLoad(proxy); if (!isCancelled) setLoadedBgImg(img); return; } catch(e) { continue; }
@@ -204,24 +206,42 @@ export default function AgoraVadaPortal() {
     renderCanvas(ctx, canvas, true);
   }, [currentPage, loadedBgImg, templateImgObj, imgX, imgY, imgScale, teksX, teksY, ukuranFont, jarakBaris, sumberX, sumberY, ukuranFontSumber, judulHtml, sumberBerita, sumberColor, templateMode, teksAlign]);
 
-  const handleMouseDown = (e) => { setIsDragging(true); const clientX = e.clientX || (e.touches && e.touches[0].clientX); const clientY = e.clientY || (e.touches && e.touches[0].clientY); setDragStart({ x: clientX - imgX, y: clientY - imgY }); };
-  const handleMouseMove = (e) => { if (!isDragging) return; const clientX = e.clientX || (e.touches && e.touches[0].clientX); const clientY = e.clientY || (e.touches && e.touches[0].clientY); setImgX(clientX - dragStart.x); setImgY(clientY - dragStart.y); };
+  const handleMouseDown = (e) => {
+    setIsDragging(true);
+    const clientX = e.clientX || (e.touches && e.touches[0].clientX);
+    const clientY = e.clientY || (e.touches && e.touches[0].clientY);
+    setDragStart({ x: clientX - imgX, y: clientY - imgY });
+  };
+  const handleMouseMove = (e) => {
+    if (!isDragging) return;
+    const clientX = e.clientX || (e.touches && e.touches[0].clientX);
+    const clientY = e.clientY || (e.touches && e.touches[0].clientY);
+    setImgX(clientX - dragStart.x);
+    setImgY(clientY - dragStart.y);
+  };
   const handleMouseUp = () => setIsDragging(false);
   const handleWheel = (e) => { e.preventDefault(); const zoomIntensity = 0.05; if (e.deltaY < 0) setImgScale(p => Math.min(p + zoomIntensity, 5)); else setImgScale(p => Math.max(p - zoomIntensity, 0.1)); };
   const handleUploadFoto = (e) => { const file = e.target.files[0]; if (file) setImageUrl(URL.createObjectURL(file)); };
   const handleUploadTemplate = (e) => {
     const file = e.target.files[0]; if (!file) return; const img = new Image(); const objectUrl = URL.createObjectURL(file);
-    img.onload = () => { if (img.width!== 1080 || img.height!== 1350) { const c = confirm(`⚠ Ukuran template ${img.width} x ${img.height}, bukan 1080 x 1350. Tetap pakai?`); if (!c) { URL.revokeObjectURL(objectUrl); return; } } setTemplateImgObj(img); };
+    img.onload = () => {
+      if (img.width!== 1080 || img.height!== 1350) {
+        const confirmUpload = confirm(`⚠ Ukuran template ${img.width} x ${img.height}, bukan 1080 x 1350.\n\nSyarat ideal 1080x1350 biar pas di preview. Tetap pakai?`);
+        if (!confirmUpload) { URL.revokeObjectURL(objectUrl); return; }
+      }
+      setTemplateImgObj(img);
+    };
     img.onerror = () => { alert('Gagal load template.'); }; img.src = objectUrl;
   };
   const downloadGambar = () => {
     const canvas = canvasRef.current; if (!canvas) return; const ctx = canvas.getContext('2d');
     renderCanvas(ctx, canvas, false);
-    const link = document.createElement('a'); link.download = templateMode === 'agentlondo'? 'AgentLondo_Post.jpg' : 'AgoraVada_Post.jpg';
+    const link = document.createElement('a');
+    link.download = templateMode === 'agentlondo'? 'AgentLondo_Post.jpg' : 'AgoraVada_Post.jpg';
     link.href = canvas.toDataURL("image/jpeg", 0.95); link.click();
     setTimeout(() => { const ctx2 = canvas.getContext('2d'); renderCanvas(ctx2, canvas, true); }, 100);
   };
-  // === LOGIC UPLOAD IG - BARU, GAK NGUBAH YANG LAMA ===
+  // === LOGIC PAGE 4 UPLOAD - START ===
   const stripHtml = (html) => { if (!html) return ''; const div = document.createElement('div'); div.innerHTML = html; return div.innerText || ''; };
   const openUploadPage = async () => {
     const canvas = canvasRef.current; if (!canvas) return;
@@ -241,7 +261,7 @@ export default function AgoraVadaPortal() {
   };
   const handleAddCarouselFiles = (e) => {
     const files = Array.from(e.target.files||[]);
-    if (carouselFiles.length + files.length > 9){ alert(`Max 9, sudah ${carouselFiles.length}`); return; }
+    if (carouselFiles.length + files.length > 9){ alert(`Max 9, sudah ${carouselFiles.length} mau nambah ${files.length}`); return; }
     const nf=[], np=[]; files.forEach(f=>{ nf.push(f); np.push({url:URL.createObjectURL(f),type:f.type.startsWith('video')?'video':'image',name:f.name,isMain:false}) });
     setCarouselFiles(p=>[...p,...nf]); setCarouselPreviews(p=>[...p,...np]); e.target.value='';
   };
@@ -271,8 +291,13 @@ export default function AgoraVadaPortal() {
       setUploadProgress(100); setUploadStatus('done'); setUploadStepText('✅ Berhasil publish ke Instagram!');
     }catch(err){ setUploadStatus('error'); setUploadStepText('❌ '+err.message); }
   };
+  // === LOGIC PAGE 4 UPLOAD - END ===
 
-  const handleCopyPrompt = () => { navigator.clipboard.writeText(promptTeks); setIsCopied(true); setTimeout(()=>setIsCopied(false),2000); };
+  const handleCopyPrompt = () => {
+    navigator.clipboard.writeText(promptTeks);
+    setIsCopied(true);
+    setTimeout(() => { setIsCopied(false); }, 2000);
+  };
 
   return (
     <div style={{ width: '100%', maxWidth: currentPage === 3 || currentPage === 4? '950px' : '480px', margin: '0 auto', padding: '20px', transition: 'max-width 0.3s ease' }}>
@@ -292,14 +317,22 @@ export default function AgoraVadaPortal() {
                     const res = await fetch("/api/tarik-berita", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ url: urlBerita }) });
                     const data = await res.json();
                     if(data.status === "success") {
-                      setPromptTeks(`Tolong buat 10 judul berita menggunakan hook dan copywriter handal untuk media alternatif "AgoraVada", serta buatkan caption untuk instagram, normatif saja dan informatif. Pastikan diakhiri oleh sumber berita dan 3 hastag (wajib ada #AgoraVada sisanya disesuaikan dengan kata kunci subjek dan topik yang dibahas).\n\n${data.prompt}`);
+                      const promptSakti = `Tolong buat 10 judul berita menggunakan hook dan copywriter handal untuk media alternatif "AgoraVada", serta buatkan caption untuk instagram, normatif saja dan informatif. Pastikan diakhiri oleh sumber berita dan 3 hastag (wajib ada #AgoraVada sisanya disesuaikan dengan kata kunci subjek dan topik yang dibahas).\n\n${data.prompt}`;
+                      setPromptTeks(promptSakti);
                       setSumberBerita(data.sumber || (urlBerita? `Sumber Berita: ${new URL(urlBerita).hostname}` : ''));
                       if(data.gambar_url) setImageUrl(data.gambar_url);
                       setCurrentPage(2);
-                    } else { alert("Gagal menyedot: " + (data.error || "Terhalang")); setPromptTeks("Gagal menyedot data otomatis. Silakan ketik manual."); }
-                  } catch(err) { alert("Gagal konek ke API Vercel."); }
+                    } else {
+                      const pesanError = data.error || data.message || data.details || data.detail || "Terhalang sistem keamanan website.";
+                      alert("Gagal menyedot: " + pesanError);
+                      setPromptTeks("Gagal menyedot data otomatis. Silakan ketik manual.");
+                    }
+                  } catch(err) { alert("Gagal konek ke API Vercel. Pastikan folder app/api/tarik-berita/route.js sudah dibuat."); }
                 }}>Tarik Data 🔄</button>
-              <button style={{ width: '50%', backgroundColor: '#238636', color: '#ffffff', padding: '12px', borderRadius: '10px', fontWeight: '700', fontSize: '13px', border: 'none', cursor: 'pointer' }} onClick={() => { if(urlBerita) { try { setSumberBerita(`Sumber Berita: ${new URL(urlBerita).hostname}`); } catch(e) {} } setCurrentPage(3); }}>Langsung ke Editor ➔</button>
+              <button style={{ width: '50%', backgroundColor: '#238636', color: '#ffffff', padding: '12px', borderRadius: '10px', fontWeight: '700', fontSize: '13px', border: 'none', cursor: 'pointer' }} onClick={() => {
+                  if(urlBerita) { try { setSumberBerita(`Sumber Berita: ${new URL(urlBerita).hostname}`); } catch(e) { setSumberBerita(''); } }
+                  setCurrentPage(3);
+                }}>Langsung ke Editor ➔</button>
             </div>
           </div>
         )}
@@ -307,11 +340,14 @@ export default function AgoraVadaPortal() {
           <div>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px', borderBottom: '1px solid #30363d', paddingBottom: '8px' }}>
               <h2 style={{ fontSize: '15px', fontWeight: '700', color: '#c9d1d9', margin: 0 }}>2. Prompt Manual & Edit Teks</h2>
-              <button onClick={handleCopyPrompt} style={{ backgroundColor: isCopied? '#238636' : '#21262d', color: '#ffffff', padding: '6px 12px', borderRadius: '6px', fontSize: '11px', fontWeight: '600', border: isCopied? '1px solid #2ea043' : '1px solid #30363d', cursor: 'pointer' }}>{isCopied? "✅ Tersalin!" : "📋 Copy Prompt"}</button>
+              <button onClick={handleCopyPrompt} style={{ backgroundColor: isCopied? '#238636' : '#21262d', color: '#ffffff', padding: '6px 12px', borderRadius: '6px', fontSize: '11px', fontWeight: '600', border: isCopied? '1px solid #2ea043' : '1px solid #30363d', cursor: 'pointer', display: 'flex', alignItems: 'center', transition: 'all 0.2s ease' }}>{isCopied? "✅ Tersalin!" : "📋 Copy Prompt"}</button>
             </div>
             <div style={{ display: 'flex', gap: '8px', marginBottom: '12px' }}>
-              <button onClick={() => { setPromptMode('threads'); if (rawBeritaContent) setPromptTeks(`${PROMPT_TEMPLATES.threads}\n\n${rawBeritaContent}`); }} style={{ flex: 1, backgroundColor: promptMode === 'threads'? '#1f6feb' : '#21262d', color: promptMode === 'threads'? '#ffffff' : '#8b949e', padding: '10px 12px', borderRadius: '8px', fontSize: '12px', fontWeight: '700', border: promptMode === 'threads'? '1px solid #388bfd' : '1px solid #30363d', cursor: 'pointer' }}>🧵 Threads / X</button>
-              <button onClick={() => { setPromptMode('homeless'); if (rawBeritaContent) setPromptTeks(`${PROMPT_TEMPLATES.homeless}\n\n${rawBeritaContent}`); }} style={{ flex: 1, backgroundColor: promptMode === 'homeless'? '#238636' : '#21262d', color: promptMode === 'homeless'? '#ffffff' : '#8b949e', padding: '10px 12px', borderRadius: '8px', fontSize: '12px', fontWeight: '700', border: promptMode === 'homeless'? '1px solid #2ea043' : '1px solid #30363d', cursor: 'pointer' }}>🏚 Homeless Media</button>
+              <button onClick={() => { setPromptMode('threads'); if (rawBeritaContent) { setPromptTeks(`${PROMPT_TEMPLATES.threads}\n\n${rawBeritaContent}`); } else { const parts = promptTeks.split('\n\n'); if (parts.length > 1) { setPromptTeks(`${PROMPT_TEMPLATES.threads}\n\n${parts.slice(1).join('\n\n')}`); } else { setPromptTeks(PROMPT_TEMPLATES.threads + (promptTeks? '\n\n' + promptTeks : '')); } } }} style={{ flex: 1, backgroundColor: promptMode === 'threads'? '#1f6feb' : '#21262d', color: promptMode === 'threads'? '#ffffff' : '#8b949e', padding: '10px 12px', borderRadius: '8px', fontSize: '12px', fontWeight: '700', border: promptMode === 'threads'? '1px solid #388bfd' : '1px solid #30363d', cursor: 'pointer', transition: 'all 0.2s' }}>🧵 Threads / X</button>
+              <button onClick={() => { setPromptMode('homeless'); if (rawBeritaContent) { setPromptTeks(`${PROMPT_TEMPLATES.homeless}\n\n${rawBeritaContent}`); } else { const parts = promptTeks.split('\n\n'); if (parts.length > 1) { setPromptTeks(`${PROMPT_TEMPLATES.homeless}\n\n${parts.slice(1).join('\n\n')}`); } else { setPromptTeks(PROMPT_TEMPLATES.homeless + (promptTeks? '\n\n' + promptTeks : '')); } } }} style={{ flex: 1, backgroundColor: promptMode === 'homeless'? '#238636' : '#21262d', color: promptMode === 'homeless'? '#ffffff' : '#8b949e', padding: '10px 12px', borderRadius: '8px', fontSize: '12px', fontWeight: '700', border: promptMode === 'homeless'? '1px solid #2ea043' : '1px solid #30363d', cursor: 'pointer', transition: 'all 0.2s' }}>🏚 Homeless Media</button>
+            </div>
+            <div style={{ backgroundColor: '#161b22', border: '1px dashed #30363d', padding: '8px 10px', borderRadius: '8px', marginBottom: '12px', fontSize: '11px', color: '#8b949e' }}>
+              {promptMode === 'threads'? (<span>Mode <strong style={{color: '#58a6ff'}}>Threads/X</strong>: Identifikasi isu, 10 perspektif Pro (5) Kontra (5) satir & tajam, singkat.</span>) : (<span>Mode <strong style={{color: '#3fb950'}}>Homeless Media / AgoraVada</strong>: 10 judul hook + caption IG normatif + #AgoraVada.</span>)}
             </div>
             <textarea style={{ width: '100%', backgroundColor: '#0d1117', border: '1px solid #30363d', color: '#e6edf3', padding: '12px', borderRadius: '10px', fontSize: '13px', minHeight: '280px', outline: 'none', marginBottom: '12px', boxSizing: 'border-box', resize: 'vertical' }} value={promptTeks} onChange={(e) => setPromptTeks(e.target.value)} />
             <div style={{ display: 'flex', gap: '10px' }}>
@@ -337,8 +373,12 @@ export default function AgoraVadaPortal() {
                   </div>
                   <div style={{ backgroundColor: '#161b22', padding: '16px', borderRadius: '10px', border: '1px solid #f0883e' }}>
                     <label style={{ fontSize: '11px', fontWeight: '700', color: '#f0883e', display: 'block', marginBottom: '6px' }}>🎨 UPLOAD MEDIA (Template)</label>
-                    <div style={{ fontSize: '10px', color: '#8b949e', marginBottom: '8px' }}>Wajib ukuran <strong style={{color: '#f0883e'}}>1080 x 1350</strong></div>
+                    <div style={{ fontSize: '10px', color: '#8b949e', marginBottom: '8px', lineHeight: '1.3' }}>Ganti template preview. Wajib ukuran <strong style={{color: '#f0883e'}}>1080 x 1350</strong> (IG Post).</div>
                     <input type="file" accept="image/*" onChange={handleUploadTemplate} style={{ fontSize: '11px', color: '#c9d1d9', width: '100%' }} />
+                    <div style={{ display: 'flex', gap: '6px', marginTop: '12px' }}>
+                      <button onClick={() => { setTemplateMode('agoravada'); const def = TEMPLATE_DEFAULTS.agoravada; setTeksX(def.teksX); setTeksY(def.teksY); setUkuranFont(def.ukuranFont); setJarakBaris(def.jarakBaris); setSumberX(def.sumberX); setSumberY(def.sumberY); setUkuranFontSumber(def.ukuranFontSumber); const tImg = new Image(); tImg.src = '/Agora Vada Template.png'; tImg.onload = () => setTemplateImgObj(tImg); }} style={{ flex: 1, backgroundColor: templateMode === 'agoravada'? '#f0883e' : '#21262d', color: templateMode === 'agoravada'? '#000' : '#c9d1d9', padding: '8px 6px', borderRadius: '6px', fontSize: '10px', fontWeight: '700', border: templateMode === 'agoravada'? '1px solid #f0883e' : '1px solid #30363d', cursor: 'pointer' }}>🏚 Agora Vada</button>
+                      <button onClick={() => { setTemplateMode('agentlondo'); const def = TEMPLATE_DEFAULTS.agentlondo; setTeksX(def.teksX); setTeksY(def.teksY); setUkuranFont(def.ukuranFont); setJarakBaris(def.jarakBaris); setSumberX(def.sumberX); setSumberY(def.sumberY); setUkuranFontSumber(def.ukuranFontSumber); const tryLoadAgentLondo = (urls, index = 0) => { if (index >= urls.length) { alert('Gagal load template Agent Londo.'); return; } const tImg = new Image(); tImg.onload = () => setTemplateImgObj(tImg); tImg.onerror = () => tryLoadAgentLondo(urls, index + 1); tImg.src = urls[index]; }; tryLoadAgentLondo(['/AgentLondo.png', '/Agent Londo.png', '/AgentLondo Template.png', '/Agent Londo Template.png', '/AgentLondoTemplate.png']); }} style={{ flex: 1, backgroundColor: templateMode === 'agentlondo'? '#58a6ff' : '#21262d', color: templateMode === 'agentlondo'? '#fff' : '#c9d1d9', padding: '8px 6px', borderRadius: '6px', fontSize: '10px', fontWeight: '700', border: templateMode === 'agentlondo'? '1px solid #58a6ff' : '1px solid #30363d', cursor: 'pointer' }}>🕵 Agent Londo</button>
+                    </div>
                   </div>
                 </div>
               </div>
@@ -346,18 +386,35 @@ export default function AgoraVadaPortal() {
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '20px' }}>
               <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
                 <div style={{ backgroundColor: '#0d1117', padding: '16px', borderRadius: '12px', border: '1px solid #30363d' }}>
-                  <label style={{ fontSize: '11px', fontWeight: '700', color: '#a371f7', display: 'block', marginBottom: '10px' }}>📝 EDIT JUDUL</label>
-                  <div id="judul-editor" contentEditable suppressContentEditableWarning style={{ width: '100%', backgroundColor: '#161b22', border: '1px solid #30363d', color: '#ffffff', padding: '12px', borderRadius: '8px', fontSize: '14px', minHeight: '110px', outline: 'none', boxSizing: 'border-box' }} onInput={(e) => setJudulHtml(e.currentTarget.innerHTML)} dangerouslySetInnerHTML={{ __html: judulHtml }}></div>
+                  <label style={{ fontSize: '11px', fontWeight: '700', color: '#a371f7', display: 'block', marginBottom: '10px', letterSpacing: '1px' }}>📝 EDIT JUDUL</label>
+                  <div style={{ display: 'flex', gap: '8px', marginBottom: '10px', alignItems: 'center', flexWrap: 'wrap' }}>
+                    <button onClick={() => handleFormat('foreColor', '#E7E820')} style={{ backgroundColor: '#E7E820', color: '#000', padding: '6px 12px', borderRadius: '6px', fontSize: '11px', fontWeight: 'bold', cursor: 'pointer', border: 'none' }}>Kuning</button>
+                    <button onClick={() => handleFormat('italic')} style={{ backgroundColor: '#21262d', color: '#fff', padding: '6px 14px', borderRadius: '6px', fontSize: '12px', fontWeight: 'bold', fontStyle: 'italic', cursor: 'pointer', border: '1px solid #30363d' }}>I</button>
+                    <div style={{ width: '1px', height: '16px', backgroundColor: '#30363d', margin: '0 4px' }}></div>
+                    <button onClick={() => handleFormat('foreColor', '#ffffff')} style={{ backgroundColor: 'transparent', color: '#c9d1d9', padding: '6px 10px', borderRadius: '6px', fontSize: '10px', cursor: 'pointer', border: '1px solid #30363d' }}>Teks Dasar</button>
+                    <div style={{ width: '1px', height: '16px', backgroundColor: '#30363d', margin: '0 4px' }}></div>
+                    <button onClick={() => setTeksAlign('left')} style={{ backgroundColor: teksAlign === 'left'? '#a371f7' : '#21262d', color: teksAlign === 'left'? '#fff' : '#c9d1d9', padding: '6px 8px', borderRadius: '6px', fontSize: '12px', cursor: 'pointer', border: teksAlign === 'left'? '1px solid #a371f7' : '1px solid #30363d' }}>☰</button>
+                    <button onClick={() => setTeksAlign('center')} style={{ backgroundColor: teksAlign === 'center'? '#a371f7' : '#21262d', color: teksAlign === 'center'? '#fff' : '#c9d1d9', padding: '6px 8px', borderRadius: '6px', fontSize: '12px', cursor: 'pointer', border: teksAlign === 'center'? '1px solid #a371f7' : '1px solid #30363d' }}>≡</button>
+                    <button onClick={() => setTeksAlign('right')} style={{ backgroundColor: teksAlign === 'right'? '#a371f7' : '#21262d', color: teksAlign === 'right'? '#fff' : '#c9d1d9', padding: '6px 8px', borderRadius: '6px', fontSize: '12px', cursor: 'pointer', border: teksAlign === 'right'? '1px solid #a371f7' : '1px solid #30363d' }}>☰</button>
+                    <button onClick={() => setTeksAlign('justify')} style={{ backgroundColor: teksAlign === 'justify'? '#a371f7' : '#21262d', color: teksAlign === 'justify'? '#fff' : '#c9d1d9', padding: '6px 8px', borderRadius: '6px', fontSize: '12px', cursor: 'pointer', border: teksAlign === 'justify'? '1px solid #a371f7' : '1px solid #30363d' }}>≣</button>
+                  </div>
+                  <div id="judul-editor" contentEditable onInput={(e) => setJudulHtml(e.currentTarget.innerHTML)} style={{ width: '100%', maxWidth: '100%', backgroundColor: '#161b22', border: '1px solid #30363d', color: '#ffffff', padding: '12px', borderRadius: '8px', fontSize: '14px', minHeight: '110px', maxHeight: '280px', outline: 'none', boxSizing: 'border-box', overflowY: 'auto', overflowX: 'hidden', lineHeight: '1.5', whiteSpace: 'pre-wrap', wordBreak: 'break-all', overflowWrap: 'anywhere', textAlign: teksAlign }} />
                 </div>
                 <div style={{ backgroundColor: '#0d1117', padding: '16px', borderRadius: '12px', border: '1px solid #30363d' }}>
-                  <label style={{ fontSize: '11px', fontWeight: '700', color: '#f78166', display: 'block', marginBottom: '10px' }}>🔗 SUMBER BERITA</label>
+                  <label style={{ fontSize: '11px', fontWeight: '700', color: '#f78166', display: 'block', marginBottom: '10px', letterSpacing: '1px' }}>🔗 SUMBER BERITA</label>
                   <input type="text" style={{ width: '100%', backgroundColor: '#161b22', border: '1px solid #30363d', color: '#ffffff', padding: '10px', borderRadius: '8px', fontSize: '13px', outline: 'none', boxSizing: 'border-box' }} value={sumberBerita} onChange={(e) => setSumberBerita(e.target.value)} />
                 </div>
                 <div style={{ backgroundColor: '#0d1117', padding: '12px 16px', borderRadius: '12px', border: '1px solid #30363d' }}>
-                  <label style={{ fontSize: '11px', fontWeight: '700', color: '#f78166', display: 'flex', justifyContent: 'space-between', marginBottom: '8px' }}><span>📍 KONTROL SUMBER BERITA</span><button onClick={() => { const def = TEMPLATE_DEFAULTS[templateMode]; setSumberX(def.sumberX); setSumberY(def.sumberY); setUkuranFontSumber(def.ukuranFontSumber); }} style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: '14px', padding: 0 }}>🔄</button></label>
+                  <label style={{ fontSize: '11px', fontWeight: '700', color: '#f78166', display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px' }}>
+                    <span>📍 KONTROL SUMBER BERITA</span>
+                    <button onClick={() => { const def = TEMPLATE_DEFAULTS[templateMode]; setSumberX(def.sumberX); setSumberY(def.sumberY); setUkuranFontSumber(def.ukuranFontSumber); }} style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: '14px', padding: 0 }}>🔄</button>
+                  </label>
                   <div style={{ display: 'grid', gridTemplateColumns: '1fr', gap: '8px' }}>
                     <div><span style={{ fontSize: '10px', color: '#8b949e', display: 'flex', justifyContent: 'space-between' }}><span>Ukuran Font</span> <span>{ukuranFontSumber}</span></span><input type="range" min="15" max="150" step="1" value={ukuranFontSumber} onChange={(e) => setUkuranFontSumber(parseInt(e.target.value))} style={{ width: '100%', accentColor: '#f78166' }} /></div>
-                    <div style={{ display: 'flex', gap: '8px' }}><div style={{ flex: 1 }}><span style={{ fontSize: '10px', color: '#8b949e', display: 'flex', justifyContent: 'space-between' }}><span>Geser X</span> <span>{sumberX}</span></span><input type="range" min="0" max="1080" step="1" value={sumberX} onChange={(e) => setSumberX(parseInt(e.target.value))} style={{ width: '100%', accentColor: '#f78166' }} /></div><div style={{ flex: 1 }}><span style={{ fontSize: '10px', color: '#8b949e', display: 'flex', justifyContent: 'space-between' }}><span>Geser Y</span> <span>{sumberY}</span></span><input type="range" min="0" max="1350" step="1" value={sumberY} onChange={(e) => setSumberY(parseInt(e.target.value))} style={{ width: '100%', accentColor: '#f78166' }} /></div></div>
+                    <div style={{ display: 'flex', gap: '8px' }}>
+                      <div style={{ flex: 1 }}><span style={{ fontSize: '10px', color: '#8b949e', display: 'flex', justifyContent: 'space-between' }}><span>Geser X</span> <span>{sumberX}</span></span><input type="range" min="0" max="1080" step="1" value={sumberX} onChange={(e) => setSumberX(parseInt(e.target.value))} style={{ width: '100%', accentColor: '#f78166' }} /></div>
+                      <div style={{ flex: 1 }}><span style={{ fontSize: '10px', color: '#8b949e', display: 'flex', justifyContent: 'space-between' }}><span>Geser Y</span> <span>{sumberY}</span></span><input type="range" min="0" max="1350" step="1" value={sumberY} onChange={(e) => setSumberY(parseInt(e.target.value))} style={{ width: '100%', accentColor: '#f78166' }} /></div>
+                    </div>
                   </div>
                 </div>
               </div>
@@ -371,11 +428,15 @@ export default function AgoraVadaPortal() {
                   </div>
                 </div>
                 <div style={{ backgroundColor: '#0d1117', padding: '12px 16px', borderRadius: '12px', border: '1px solid #30363d' }}>
-                  <label style={{ fontSize: '11px', fontWeight: '700', color: '#a371f7', display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px' }}><span>✨ KONTROL POSISI JUDUL</span><button onClick={() => { const def = TEMPLATE_DEFAULTS[templateMode]; setTeksX(def.teksX); setTeksY(def.teksY); setUkuranFont(def.ukuranFont); setJarakBaris(def.jarakBaris); }} style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: '14px', padding: 0 }}>🔄</button></label>
+                  <label style={{ fontSize: '11px', fontWeight: '700', color: '#a371f7', display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px' }}>
+                    <span>✨ KONTROL POSISI JUDUL</span>
+                    <button onClick={() => { const def = TEMPLATE_DEFAULTS[templateMode]; setTeksX(def.teksX); setTeksY(def.teksY); setUkuranFont(def.ukuranFont); setJarakBaris(def.jarakBaris); }} style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: '14px', padding: 0 }}>🔄</button>
+                  </label>
                   <div style={{ display: 'grid', gridTemplateColumns: '1fr', gap: '8px' }}>
                     <div><span style={{ fontSize: '10px', color: '#8b949e', display: 'flex', justifyContent: 'space-between' }}><span>Ukuran Font</span> <span>{ukuranFont}</span></span><input type="range" min="30" max="400" step="1" value={ukuranFont} onChange={(e) => setUkuranFont(parseInt(e.target.value))} style={{ width: '100%', accentColor: '#a371f7' }} /></div>
-                    <div><span style={{ fontSize: '10px', color: '#8b949e', display: 'flex', justifyContent: 'space-between' }}><span>Geser X (Min {MARGIN_PX}px)</span> <span>{teksX}</span></span><input type="range" min={MARGIN_PX} max={1080 - MARGIN_PX - 100} step="1" value={teksX} onChange={(e) => setTeksX(parseInt(e.target.value))} style={{ width: '100%', accentColor: '#a371f7' }} /></div>
-                    <div><span style={{ fontSize: '10px', color: '#8b949e', display: 'flex', justifyContent: 'space-between' }}><span>Geser Y</span> <span>{teksY}</span></span><input type="range" min={MARGIN_PX} max={1350 - MARGIN_PX - 100} step="1" value={teksY} onChange={(e) => setTeksY(parseInt(e.target.value))} style={{ width: '100%', accentColor: '#a371f7' }} /></div>
+                    <div><span style={{ fontSize: '10px', color: '#8b949e', display: 'flex', justifyContent: 'space-between' }}><span>Geser X (Min {MARGIN_PX}px = 1.5cm)</span> <span>{teksX}</span></span><input type="range" min={MARGIN_PX} max={1080 - MARGIN_PX - 100} step="1" value={teksX} onChange={(e) => setTeksX(parseInt(e.target.value))} style={{ width: '100%', accentColor: '#a371f7' }} /></div>
+                    <div><span style={{ fontSize: '10px', color: '#8b949e', display: 'flex', justifyContent: 'space-between' }}><span>Geser Y (Atas/Bawah - Min {MARGIN_PX}px)</span> <span>{teksY}</span></span><input type="range" min={MARGIN_PX} max={1350 - MARGIN_PX - 100} step="1" value={teksY} onChange={(e) => setTeksY(parseInt(e.target.value))} style={{ width: '100%', accentColor: '#a371f7' }} /></div>
+                    <div style={{ marginTop: '4px', paddingTop: '8px', borderTop: '1px dashed #30363d' }}><span style={{ fontSize: '10px', color: '#8b949e', display: 'flex', justifyContent: 'space-between' }}><span>Jarak Antar Kalimat</span> <span>{jarakBaris}</span></span><input type="range" min="0.8" max="2.5" step="0.1" value={jarakBaris} onChange={(e) => setJarakBaris(parseFloat(e.target.value))} style={{ width: '100%', accentColor: '#a371f7' }} /></div>
                   </div>
                   <div style={{ display: 'flex', gap: '8px', marginTop: '14px', paddingTop: '12px', borderTop: '1px solid #30363d' }}>
                     <button style={{ width: '25%', backgroundColor: '#21262d', color: '#c9d1d9', padding: '10px', borderRadius: '8px', fontWeight: '600', fontSize: '11px', border: '1px solid #30363d', cursor: 'pointer' }} onClick={() => setCurrentPage(2)}>⬅ Kembali</button>
@@ -387,19 +448,53 @@ export default function AgoraVadaPortal() {
             </div>
             <div style={{ backgroundColor: '#0d1117', border: '1px solid #30363d', borderRadius: '12px', padding: '20px' }}>
               <div style={{ backgroundColor: '#161b22', padding: '16px', borderRadius: '12px', border: '1px solid #30363d' }}>
-                <label style={{ fontSize: '12px', fontWeight: '800', color: '#f0883e', display: 'block', marginBottom: '12px' }}>🪝 BASIC HOOK</label>
-                <div style={{ display: 'flex', gap: '16px' }}>
-                  <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', width: '180px' }}>
-                    <button onClick={() => setSelectedHook('urgent')} style={{ backgroundColor: selectedHook === 'urgent'? '#f0883e' : '#21262d', color: selectedHook === 'urgent'? '#000' : '#c9d1d9', padding: '12px 10px', borderRadius: '8px', fontSize: '11px', fontWeight: '700', border: '1px solid #30363d', cursor: 'pointer', textAlign: 'left' }}>🌪 Bencana</button>
-                    <button onClick={() => setSelectedHook('respond')} style={{ backgroundColor: selectedHook === 'respond'? '#3fb950' : '#21262d', color: selectedHook === 'respond'? '#000' : '#c9d1d9', padding: '12px 10px', borderRadius: '8px', fontSize: '11px', fontWeight: '700', border: '1px solid #30363d', cursor: 'pointer', textAlign: 'left' }}>🛡 Respond Warga</button>
-                    <button onClick={() => setSelectedHook('versus')} style={{ backgroundColor: selectedHook === 'versus'? '#58a6ff' : '#21262d', color: selectedHook === 'versus'? '#000' : '#c9d1d9', padding: '12px 10px', borderRadius: '8px', fontSize: '11px', fontWeight: '700', border: '1px solid #30363d', cursor: 'pointer', textAlign: 'left' }}>⚔ Versus</button>
-                    <button onClick={() => setSelectedHook('hoax')} style={{ backgroundColor: selectedHook === 'hoax'? '#f85149' : '#21262d', color: selectedHook === 'hoax'? '#fff' : '#c9d1d9', padding: '12px 10px', borderRadius: '8px', fontSize: '11px', fontWeight: '700', border: '1px solid #30363d', cursor: 'pointer', textAlign: 'left' }}>🚫 HOAX</button>
+                <label style={{ fontSize: '12px', fontWeight: '800', color: '#f0883e', display: 'block', marginBottom: '12px', letterSpacing: '0.5px' }}>🪝 BASIC HOOK - Panduan Berkata-kata</label>
+                <div style={{ display: 'flex', gap: '16px', alignItems: 'flex-start' }}>
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', width: '180px', flexShrink: 0 }}>
+                    <button onClick={() => setSelectedHook('urgent')} style={{ backgroundColor: selectedHook === 'urgent'? '#f0883e' : '#21262d', color: selectedHook === 'urgent'? '#000' : '#c9d1d9', padding: '12px 10px', borderRadius: '8px', fontSize: '11px', fontWeight: '700', border: selectedHook === 'urgent'? '1px solid #f0883e' : '1px solid #30363d', cursor: 'pointer', textAlign: 'left' }}>🌪 Bencana<br/><span style={{fontSize: '9px', fontWeight: '400', opacity: 0.8}}>Perintah + Fenomena + Lokasi</span></button>
+                    <button onClick={() => setSelectedHook('respond')} style={{ backgroundColor: selectedHook === 'respond'? '#3fb950' : '#21262d', color: selectedHook === 'respond'? '#000' : '#c9d1d9', padding: '12px 10px', borderRadius: '8px', fontSize: '11px', fontWeight: '700', border: selectedHook === 'respond'? '1px solid #3fb950' : '1px solid #30363d', cursor: 'pointer', textAlign: 'left' }}>🛡 Respond Warga<br/><span style={{fontSize: '9px', fontWeight: '400', opacity: 0.8}}>Stay Safe + Emosi + Lokasi</span></button>
+                    <button onClick={() => setSelectedHook('versus')} style={{ backgroundColor: selectedHook === 'versus'? '#58a6ff' : '#21262d', color: selectedHook === 'versus'? '#000' : '#c9d1d9', padding: '12px 10px', borderRadius: '8px', fontSize: '11px', fontWeight: '700', border: selectedHook === 'versus'? '1px solid #58a6ff' : '1px solid #30363d', cursor: 'pointer', textAlign: 'left' }}>⚔ Versus<br/><span style={{fontSize: '9px', fontWeight: '400', opacity: 0.8}}>Beda Respon Tokoh A & B</span></button>
+                    <button onClick={() => setSelectedHook('hoax')} style={{ backgroundColor: selectedHook === 'hoax'? '#f85149' : '#21262d', color: selectedHook === 'hoax'? '#fff' : '#c9d1d9', padding: '12px 10px', borderRadius: '8px', fontSize: '11px', fontWeight: '700', border: selectedHook === 'hoax'? '1px solid #f85149' : '1px solid #30363d', cursor: 'pointer', textAlign: 'left' }}>🚫 HOAX<br/><span style={{fontSize: '9px', fontWeight: '400', opacity: 0.8}}>Mancing Geram / Iba</span></button>
                   </div>
-                  <div style={{ flex: 1, backgroundColor: '#0d1117', padding: '16px', borderRadius: '10px', border: '1px solid #21262d', minHeight: '200px', fontSize: '12px', color: '#c9d1d9' }}>
-                    {selectedHook === 'urgent' && <div><strong>Waspada! Hujan Ekstrem di Jabodetabek</strong><br/>Awas! Gelombang Tinggi di Pesisir Selatan Jawa</div>}
-                    {selectedHook === 'respond' && <div>Stay Safe! Warga Geram di Pasar Parung Saat Copet Merajalela</div>}
-                    {selectedHook === 'versus' && <div>Beda Cara Atasi Sampah Liar: Parung Pilih Denda, Kemang Pilih Bank Sampah</div>}
-                    {selectedHook === 'hoax' && <div>Parah Banget! Akun Palsu Catut Nama Puskesmas</div>}
+                  <div style={{ flex: 1, backgroundColor: '#0d1117', padding: '16px', borderRadius: '10px', border: '1px solid #21262d', minHeight: '300px' }}>
+                    {selectedHook === 'urgent' && (
+                      <div style={{ fontSize: '12px', lineHeight: '1.6', color: '#c9d1d9' }}>
+                        <div style={{ fontWeight: '800', color: '#ffffff', marginBottom: '10px', fontSize: '13px' }}>Rumus : Perintah! + Fenomena + Lokasi</div>
+                        <div style={{ borderTop: '1px dashed #30363d', paddingTop: '10px', marginTop: '10px' }}>
+                          <div style={{ fontWeight: '700', color: '#e6edf3', marginBottom: '6px' }}>Contoh:</div>
+                          <div style={{ backgroundColor: '#161b22', padding: '8px 10px', borderRadius: '6px', marginBottom: '8px', borderLeft: '3px solid #f0883e' }}>Waspada! Hujan Ekstrem di Jabodetabek</div>
+                          <div style={{ backgroundColor: '#161b22', padding: '8px 10px', borderRadius: '6px', marginBottom: '8px', borderLeft: '3px solid #f0883e' }}>Awas! Gelombang Tinggi di Pesisir Selatan Jawa</div>
+                          <div style={{ backgroundColor: '#161b22', padding: '8px 10px', borderRadius: '6px', borderLeft: '3px solid #f0883e' }}>Hindari! Jalur Rawan Longsor di Cisarua - Puncak</div>
+                        </div>
+                      </div>
+                    )}
+                    {selectedHook === 'respond' && (
+                      <div style={{ fontSize: '12px', lineHeight: '1.6', color: '#c9d1d9' }}>
+                        <div style={{ fontWeight: '800', color: '#3fb950', marginBottom: '8px', fontSize: '13px' }}>Respond Warga: Stay Safe! + Respon Emosi Warga + Lokasi</div>
+                        <div style={{ borderTop: '1px dashed #30363d', paddingTop: '10px', marginTop: '10px' }}>
+                          <div style={{ fontWeight: '700', color: '#e6edf3', marginBottom: '6px' }}>Contoh:</div>
+                          <div style={{ backgroundColor: '#161b22', padding: '8px 10px', borderRadius: '6px', marginBottom: '8px', borderLeft: '3px solid #3fb950' }}>Stay Safe! Warga Geram di Pasar Parung Saat Copet Merajalela</div>
+                        </div>
+                      </div>
+                    )}
+                    {selectedHook === 'versus' && (
+                      <div style={{ fontSize: '12px', lineHeight: '1.6', color: '#c9d1d9' }}>
+                        <div style={{ fontWeight: '800', color: '#58a6ff', marginBottom: '8px', fontSize: '13px' }}>Versus: Hadapi Isu + Beda Respon Tokoh A & Tokoh B</div>
+                        <div style={{ borderTop: '1px dashed #30363d', paddingTop: '10px', marginTop: '10px' }}>
+                          <div style={{ fontWeight: '700', color: '#e6edf3', marginBottom: '6px' }}>Contoh:</div>
+                          <div style={{ backgroundColor: '#161b22', padding: '8px 10px', borderRadius: '6px', borderLeft: '3px solid #58a6ff' }}>Beda Cara Atasi Sampah Liar: Parung Pilih Denda, Kemang Pilih Bank Sampah</div>
+                        </div>
+                      </div>
+                    )}
+                    {selectedHook === 'hoax' && (
+                      <div style={{ fontSize: '12px', lineHeight: '1.6', color: '#c9d1d9' }}>
+                        <div style={{ fontWeight: '800', color: '#f85149', marginBottom: '8px', fontSize: '13px' }}>HOAX: Mancing Geram/Iba + Pelaku + HOAX</div>
+                        <div style={{ borderTop: '1px dashed #30363d', paddingTop: '10px', marginTop: '10px' }}>
+                          <div style={{ fontWeight: '700', color: '#e6edf3', marginBottom: '6px' }}>Contoh:</div>
+                          <div style={{ backgroundColor: '#161b22', padding: '8px 10px', borderRadius: '6px', borderLeft: '3px solid #f85149' }}>Parah Banget! Akun Palsu Catut Nama Puskesmas</div>
+                        </div>
+                      </div>
+                    )}
                   </div>
                 </div>
               </div>
@@ -409,13 +504,13 @@ export default function AgoraVadaPortal() {
         {currentPage === 4 && (
           <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-              <h2 style={{ fontSize: '15px', fontWeight: '800', color: '#fff', margin: 0 }}>4. Preview Upload Instagram - Tanpa Garis Margin</h2>
+              <h2 style={{ fontSize: '15px', fontWeight: '800', color: '#ffffff', margin: 0 }}>4. Preview Upload Instagram - Tanpa Garis Margin</h2>
               <button onClick={() => setCurrentPage(3)} style={{ backgroundColor: '#21262d', border: '1px solid #30363d', color: '#c9d1d9', padding: '6px 12px', borderRadius: '8px', fontSize: '11px', cursor: 'pointer' }}>⬅ Kembali Edit</button>
             </div>
             {uploadStatus!=='idle' && (
               <div style={{ backgroundColor: '#0d1117', padding: '12px', borderRadius: '10px', border: '1px solid #30363d' }}>
                 <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '6px' }}><span style={{ fontSize: '11px', color: '#8b949e' }}>{uploadStepText}</span><span style={{ fontSize: '11px', color: '#fff', fontWeight: 700 }}>{uploadProgress}%</span></div>
-                <div style={{ width: '100%', height: '8px', backgroundColor: '#21262d', borderRadius: '4px', overflow: 'hidden' }}><div style={{ width: `${uploadProgress}%`, height: '100%', backgroundColor: uploadStatus==='error'?'#f85149':uploadStatus==='done'?'#3fb950':'#E1306C' }} /></div>
+                <div style={{ width: '100%', height: '8px', backgroundColor: '#21262d', borderRadius: '4px', overflow: 'hidden' }}><div style={{ width: `${uploadProgress}%`, height: '100%', backgroundColor: uploadStatus==='error'?'#f85149':uploadStatus==='done'?'#3fb950':'#E1306C', transition: 'width 0.3s' }} /></div>
               </div>
             )}
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '20px' }}>
@@ -429,15 +524,16 @@ export default function AgoraVadaPortal() {
                       <button onClick={()=>removeCarouselItem(idx)} style={{ position: 'absolute', top: '4px', right: '4px', backgroundColor: '#f85149', color: '#fff', border: 'none', borderRadius: '50%', width: '20px', height: '20px', fontSize: '10px', cursor: 'pointer' }}>✕</button>
                     </div>
                   ))}
-                  {carouselPreviews.length<9 && <label style={{ aspectRatio: '1/1', border: '1px dashed #30363d', borderRadius: '8px', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', color: '#8b949e', fontSize: '11px', backgroundColor: '#0d1117' }}>＋Add<input type="file" accept="image/*,video/*" multiple onChange={handleAddCarouselFiles} style={{ display: 'none' }} /></label>}
+                  {carouselPreviews.length<9 && <label style={{ aspectRatio: '1/1', border: '1px dashed #30363d', borderRadius: '8px', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', color: '#8b949e', fontSize: '11px', backgroundColor: '#0d1117' }}>＋Add<input type="file" accept="image/*,video/*" multiple onChange={handleAddCarouselFiles} style={{ display: 'none' }} /></label>}
                 </div>
+                <input type="file" accept="image/*,video/*" multiple onChange={handleAddCarouselFiles} style={{ width: '100%', fontSize: '11px', color: '#c9d1d9' }} />
               </div>
               <div>
-                <label style={{ fontSize: '11px', fontWeight: 700, color: '#a371f7', display: 'block', marginBottom: '8px' }}>📝 Caption</label>
-                <textarea value={igCaption} onChange={(e)=>setIgCaption(e.target.value)} style={{ width: '100%', minHeight: '320px', backgroundColor: '#0d1117', border: '1px solid #30363d', color: '#e6edf3', padding: '12px', borderRadius: '10px', fontSize: '13px' }} />
+                <label style={{ fontSize: '11px', fontWeight: 700, color: '#a371f7', display: 'block', marginBottom: '8px' }}>📝 Caption Instagram</label>
+                <textarea value={igCaption} onChange={(e)=>setIgCaption(e.target.value)} style={{ width: '100%', minHeight: '320px', backgroundColor: '#0d1117', border: '1px solid #30363d', color: '#e6edf3', padding: '12px', borderRadius: '10px', fontSize: '13px', outline: 'none', resize: 'vertical', boxSizing: 'border-box' }} />
                 <div style={{ display: 'flex', gap: '8px', marginTop: '16px' }}>
-                  <button onClick={()=>setCurrentPage(3)} style={{ flex: 1, backgroundColor: '#21262d', color: '#c9d1d9', padding: '12px', borderRadius: '10px', border: '1px solid #30363d' }}>Batal</button>
-                  <button onClick={uploadToInstagram} style={{ flex: 2, backgroundColor: uploadStatus==='done'?'#238636':'#E1306C', color: '#fff', padding: '12px', borderRadius: '10px', fontWeight: 700, border: 'none' }}>{uploadStatus==='done'?'✅ Berhasil!':`🚀 Upload ke IG (${uploadProgress}%)`}</button>
+                  <button onClick={()=>setCurrentPage(3)} style={{ flex: 1, backgroundColor: '#21262d', color: '#c9d1d9', padding: '12px', borderRadius: '10px', border: '1px solid #30363d', cursor: 'pointer', fontWeight: 600, fontSize: '12px' }}>Batal</button>
+                  <button onClick={uploadToInstagram} disabled={uploadStatus==='uploading'} style={{ flex: 2, backgroundColor: uploadStatus==='done'?'#238636':'#E1306C', color: '#fff', padding: '12px', borderRadius: '10px', fontWeight: 700, border: 'none', cursor: 'pointer', fontSize: '12px' }}>{uploadStatus==='done'?'✅ Berhasil!':`🚀 Upload (${uploadProgress}%)`}</button>
                 </div>
               </div>
             </div>
