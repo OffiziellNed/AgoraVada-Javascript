@@ -1,4 +1,5 @@
 "use client";
+
 import React, { useState, useRef, useEffect } from 'react';
 
 export default function AgoraVadaPortal() {
@@ -8,7 +9,7 @@ export default function AgoraVadaPortal() {
   const [rawBeritaContent, setRawBeritaContent] = useState('');
   const [promptMode, setPromptMode] = useState('homeless');
   const [selectedHook, setSelectedHook] = useState('urgent');
-  // === UPLOAD IG MODAL STATES ===
+  // === UPLOAD IG STATES - TAMBAHAN BARU ===
   const [showUploadModal, setShowUploadModal] = useState(false);
   const [igCaption, setIgCaption] = useState('');
   const [carouselFiles, setCarouselFiles] = useState([]);
@@ -21,7 +22,7 @@ export default function AgoraVadaPortal() {
   const [sumberBerita, setSumberBerita] = useState('');
   const [imageUrl, setImageUrl] = useState('');
   const PROMPT_TEMPLATES = {
-    homeless: `Tolong buat 10 judul berita menggunakan hook dan copywriter handal untuk media alternatif "AgoraVada", serta buatkan caption untuk 【entity-instagram¦canonical_name=Instagram】, normatif saja dan informatif. Pastikan diakhiri oleh sumber berita dan 3 hastag (wajib ada #AgoraVada sisanya disesuaikan dengan kata kunci subjek dan topik yang dibahas).`,
+    homeless: `Tolong buat 10 judul berita menggunakan hook dan copywriter handal untuk media alternatif "AgoraVada", serta buatkan caption untuk instagram, normatif saja dan informatif. Pastikan diakhiri oleh sumber berita dan 3 hastag (wajib ada #AgoraVada sisanya disesuaikan dengan kata kunci subjek dan topik yang dibahas).`,
     threads: `Tolong identifikasi isu, paparkan fakta penting, berikan 10 perspektif 5 opini Pro dan 5 Opini Kontra untuk X atau Threads, Jika kontra boleh gunakan Bahasa satir, sarkas, tajam. Pastikan singkat singkat saja`
   };
   const [isCopied, setIsCopied] = useState(false);
@@ -193,7 +194,7 @@ export default function AgoraVadaPortal() {
       ctx.font = `${ukuranFontSumber}px ${sumberFont}, sans-serif`; ctx.textAlign = 'left'; ctx.textBaseline = 'top';
       ctx.fillText(sumberBerita, sumberX, sumberY);
     }
-  }, [currentPage, loadedBgImg, templateImgObj, imgX, imgY, imgScale, teksX, teksY, ukuranFont, jarakBaris, sumberX, sumberY, ukuranFontSumber, judulHtml, sumberBerita]);
+  }, [currentPage, loadedBgImg, templateImgObj, imgX, imgY, imgScale, teksX, teksY, ukuranFont, jarakBaris, sumberX, sumberY, ukuranFontSumber, judulHtml, sumberBerita, templateMode, teksAlign, sumberColor]);
 
   const handleMouseDown = (e) => { setIsDragging(true); const clientX = e.clientX || (e.touches && e.touches[0].clientX); const clientY = e.clientY || (e.touches && e.touches[0].clientY); setDragStart({ x: clientX - imgX, y: clientY - imgY }); };
   const handleMouseMove = (e) => { if (!isDragging) return; const clientX = e.clientX || (e.touches && e.touches[0].clientX); const clientY = e.clientY || (e.touches && e.touches[0].clientY); setImgX(clientX - dragStart.x); setImgY(clientY - dragStart.y); };
@@ -202,98 +203,64 @@ export default function AgoraVadaPortal() {
   const handleUploadFoto = (e) => { const file = e.target.files[0]; if (file) setImageUrl(URL.createObjectURL(file)); };
   const handleUploadTemplate = (e) => {
     const file = e.target.files[0]; if (!file) return; const img = new Image(); const objectUrl = URL.createObjectURL(file);
-    img.onload = () => {
-      if (img.width!== 1080 || img.height!== 1350) {
-        const confirmUpload = confirm(`⚠️ Ukuran template ${img.width} x ${img.height}, bukan 1080 x 1350.\nSyarat ideal 1080x1350 biar pas di preview. Tetap pakai?`);
-        if (!confirmUpload) { URL.revokeObjectURL(objectUrl); return; }
-      } setTemplateImgObj(img);
-    }; img.onerror = () => { alert('Gagal load template. Pastikan file gambar valid.'); }; img.src = objectUrl;
+    img.onload = () => { if (img.width!== 1080 || img.height!== 1350) { const confirmUpload = confirm(`⚠️ Ukuran template ${img.width} x ${img.height}, bukan 1080 x 1350. Tetap pakai?`); if (!confirmUpload) { URL.revokeObjectURL(objectUrl); return; } } setTemplateImgObj(img); };
+    img.onerror = () => { alert('Gagal load template.'); }; img.src = objectUrl;
   };
-
   const downloadGambar = () => {
     const canvas = canvasRef.current;
     if (canvas) { const link = document.createElement('a'); link.download = 'AgoraVada_Post.jpg'; link.href = canvas.toDataURL("image/jpeg", 0.95); link.click(); }
   };
-
-  // === UPLOAD MODAL LOGIC ===
-  const stripHtml = (html) => { if (!html) return ''; const div = document.createElement('div'); div.innerHTML = html; return div.innerText || div.textContent || ''; };
+  // === UPLOAD IG LOGIC ===
+  const stripHtml = (html) => { if (!html) return ''; const div = document.createElement('div'); div.innerHTML = html; return div.innerText || ''; };
   const openUploadModal = async () => {
     const judulText = stripHtml(judulHtml);
-    const defaultCaption = `${judulText}\n\n${sumberBerita? `Sumber: ${sumberBerita}` : ''}\n\n#AgoraVada #BeritaTerkini`.trim();
-    setIgCaption(defaultCaption); setUploadProgress(0); setUploadStatus('idle'); setUploadStepText('');
-    if (carouselFiles.length === 0 && canvasRef.current) {
-      try {
-        const blob = await new Promise(res => canvasRef.current.toBlob(res, 'image/jpeg', 0.95));
-        if (blob) {
-          const file = new File([blob], `agoravada-main-${Date.now()}.jpg`, { type: 'image/jpeg' });
-          const previewUrl = URL.createObjectURL(blob);
-          setCarouselFiles([file]); setCarouselPreviews([{ url: previewUrl, type: 'image', name: file.name, isMain: true }]);
-        }
-      } catch(e) { console.error(e); }
+    setIgCaption(`${judulText}\n\n${sumberBerita?`Sumber: ${sumberBerita}`:''}\n\n#AgoraVada`.trim());
+    setUploadProgress(0); setUploadStatus('idle'); setUploadStepText('');
+    if (carouselFiles.length===0 && canvasRef.current){
+      const blob = await new Promise(r=>canvasRef.current.toBlob(r,'image/jpeg',0.95));
+      if (blob){
+        const file = new File([blob],`agoravada-${Date.now()}.jpg`,{type:'image/jpeg'});
+        setCarouselFiles([file]);
+        setCarouselPreviews([{url:URL.createObjectURL(blob),type:'image',name:file.name,isMain:true}]);
+      }
     }
     setShowUploadModal(true);
   };
   const handleAddCarouselFiles = (e) => {
-    const files = Array.from(e.target.files || []); if (files.length === 0) return;
-    const totalAfter = carouselFiles.length + files.length;
-    if (totalAfter > 9) { alert(`Maksimal 9 foto/video. Kamu sudah punya ${carouselFiles.length}, mau nambah ${files.length} = ${totalAfter}.`); return; }
-    const newFiles = []; const newPreviews = [];
-    files.forEach(f => {
-      const url = URL.createObjectURL(f); const type = f.type.startsWith('video')? 'video' : 'image';
-      newFiles.push(f); newPreviews.push({ url, type, name: f.name, isMain: false });
-    });
-    setCarouselFiles(prev => [...prev,...newFiles]); setCarouselPreviews(prev => [...prev,...newPreviews]); e.target.value = '';
+    const files = Array.from(e.target.files||[]);
+    if (carouselFiles.length + files.length > 9){ alert(`Max 9, sudah ${carouselFiles.length} mau nambah ${files.length}`); return; }
+    const nf=[], np=[];
+    files.forEach(f=>{ nf.push(f); np.push({url:URL.createObjectURL(f),type:f.type.startsWith('video')?'video':'image',name:f.name,isMain:false}) });
+    setCarouselFiles(p=>[...p,...nf]); setCarouselPreviews(p=>[...p,...np]); e.target.value='';
   };
   const removeCarouselItem = (idx) => {
-    if (carouselFiles.length === 1) { alert('Minimal 1 gambar harus ada'); return; }
-    setCarouselFiles(prev => prev.filter((_, i) => i!== idx));
-    setCarouselPreviews(prev => { const item = prev[idx]; if (item?.url) URL.revokeObjectURL(item.url); return prev.filter((_, i) => i!== idx); });
+    if (carouselFiles.length===1){ alert('Minimal 1'); return; }
+    setCarouselFiles(p=>p.filter((_,i)=>i!==idx));
+    setCarouselPreviews(p=>{ URL.revokeObjectURL(p[idx].url); return p.filter((_,i)=>i!==idx); });
   };
   const uploadToInstagram = async () => {
-    if (!igCaption.trim()) { alert('Caption jangan kosong'); return; }
-    if (carouselFiles.length === 0) { alert('Tidak ada gambar'); return; }
-    try {
-      setUploadStatus('uploading'); setUploadStepText('Menyiapkan file...'); setUploadProgress(2);
-      const uploadedUrls = []; const totalFiles = carouselFiles.length;
-      setUploadStepText(`Upload ${totalFiles} file ke Vercel Blob...`);
-      for (let i = 0; i < totalFiles; i++) {
-        const file = carouselFiles[i];
-        const url = await new Promise((resolve, reject) => {
-          const formData = new FormData(); formData.append('file', file);
-          const xhr = new XMLHttpRequest(); xhr.open('POST', '/api/instagram/upload-image');
-          xhr.upload.onprogress = (e) => {
-            if (e.lengthComputable) {
-              const base = (i / totalFiles) * 40; const current = (e.loaded / e.total) * (40 / totalFiles);
-              setUploadProgress(Math.round(5 + base + current));
-              setUploadStepText(`Upload file ${i+1}/${totalFiles}: ${Math.round((e.loaded/e.total)*100)}%`);
-            }
-          };
-          xhr.onload = () => {
-            try {
-              const data = JSON.parse(xhr.responseText);
-              if (xhr.status >= 200 && xhr.status < 300 && data.url) resolve(data.url);
-              else reject(new Error(data.error || 'Upload blob gagal'));
-            } catch(err) { reject(err); }
-          };
-          xhr.onerror = () => reject(new Error('Network error upload')); xhr.send(formData);
+    if (!igCaption.trim()) return alert('Caption kosong');
+    try{
+      setUploadStatus('uploading'); setUploadProgress(2); setUploadStepText('Upload ke Blob...');
+      const uploaded=[];
+      for(let i=0;i<carouselFiles.length;i++){
+        const file=carouselFiles[i];
+        const url=await new Promise((res,rej)=>{
+          const fd=new FormData(); fd.append('file',file);
+          const xhr=new XMLHttpRequest(); xhr.open('POST','/api/instagram/upload-image');
+          xhr.upload.onprogress=(e)=>{ if(e.lengthComputable){ const base=(i/carouselFiles.length)*40; const cur=(e.loaded/e.total)*(40/carouselFiles.length); setUploadProgress(Math.round(5+base+cur)); setUploadStepText(`File ${i+1}/${carouselFiles.length}: ${Math.round(e.loaded/e.total*100)}%`);} };
+          xhr.onload=()=>{ try{ const d=JSON.parse(xhr.responseText); d.url?res(d.url):rej(d);}catch{rej('error')} }; xhr.onerror=()=>rej('network'); xhr.send(fd);
         });
-        uploadedUrls.push({ url, type: file.type.startsWith('video')? 'video' : 'image' });
+        uploaded.push({url,type:file.type.startsWith('video')?'video':'image'});
       }
-      setUploadProgress(50); setUploadStatus('creating'); setUploadStepText(`Membuat container IG (${uploadedUrls.length} item)...`);
-      const publishRes = await fetch('/api/instagram/publish', {
-        method: 'POST', headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ items: uploadedUrls, caption: igCaption })
-      });
-      setUploadProgress(80); setUploadStepText('Publishing ke Instagram...');
-      const publishData = await publishRes.json();
-      if (!publishRes.ok) throw new Error(publishData.error || publishData.message || JSON.stringify(publishData));
-      setUploadProgress(100); setUploadStatus('done'); setUploadStepText('✅ Berhasil publish ke Instagram!');
-    } catch (err) {
-      console.error(err); setUploadStatus('error'); setUploadStepText('❌ Error: ' + (err.message || 'Gagal')); setUploadProgress(0);
-    }
+      setUploadProgress(50); setUploadStatus('creating'); setUploadStepText('Bikin container IG...');
+      const r=await fetch('/api/instagram/publish',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({items:uploaded,caption:igCaption})});
+      const j=await r.json(); if(!r.ok) throw new Error(JSON.stringify(j));
+      setUploadProgress(100); setUploadStatus('done'); setUploadStepText('✅ Berhasil publish!');
+    }catch(err){ setUploadStatus('error'); setUploadStepText('❌ '+err.message); }
   };
 
-  const handleCopyPrompt = () => { navigator.clipboard.writeText(promptTeks); setIsCopied(true); setTimeout(() => { setIsCopied(false); }, 2000); };
+  const handleCopyPrompt = () => { navigator.clipboard.writeText(promptTeks); setIsCopied(true); setTimeout(()=>setIsCopied(false),2000); };
 
   return (
     <div style={{ width: '100%', maxWidth: currentPage === 3? '950px' : '480px', margin: '0 auto', padding: '20px', transition: 'max-width 0.3s ease' }}>
@@ -327,10 +294,9 @@ export default function AgoraVadaPortal() {
               <button onClick={handleCopyPrompt} style={{ backgroundColor: isCopied? '#238636' : '#21262d', color: '#ffffff', padding: '6px 12px', borderRadius: '6px', fontSize: '11px', fontWeight: '600', border: isCopied? '1px solid #2ea043' : '1px solid #30363d', cursor: 'pointer', display: 'flex', alignItems: 'center', transition: 'all 0.2s ease' }}>{isCopied? "✅ Tersalin!" : "📋 Copy Prompt"}</button>
             </div>
             <div style={{ display: 'flex', gap: '8px', marginBottom: '12px' }}>
-              <button onClick={() => { setPromptMode('threads'); if (rawBeritaContent) setPromptTeks(`${PROMPT_TEMPLATES.threads}\n\n${rawBeritaContent}`); else { const parts = promptTeks.split('\n\n'); if (parts.length > 1) setPromptTeks(`${PROMPT_TEMPLATES.threads}\n\n${parts.slice(1).join('\n\n')}`); else setPromptTeks(PROMPT_TEMPLATES.threads + (promptTeks? '\n\n' + promptTeks : '')); } }} style={{ flex: 1, backgroundColor: promptMode === 'threads'? '#1f6feb' : '#21262d', color: promptMode === 'threads'? '#ffffff' : '#8b949e', padding: '10px 12px', borderRadius: '8px', fontSize: '12px', fontWeight: '700', border: promptMode === 'threads'? '1px solid #388bfd' : '1px solid #30363d', cursor: 'pointer', transition: 'all 0.2s' }}>🧵 Threads / X</button>
-              <button onClick={() => { setPromptMode('homeless'); if (rawBeritaContent) setPromptTeks(`${PROMPT_TEMPLATES.homeless}\n\n${rawBeritaContent}`); else { const parts = promptTeks.split('\n\n'); if (parts.length > 1) setPromptTeks(`${PROMPT_TEMPLATES.homeless}\n\n${parts.slice(1).join('\n\n')}`); else setPromptTeks(PROMPT_TEMPLATES.homeless + (promptTeks? '\n\n' + promptTeks : '')); } }} style={{ flex: 1, backgroundColor: promptMode === 'homeless'? '#238636' : '#21262d', color: promptMode === 'homeless'? '#ffffff' : '#8b949e', padding: '10px 12px', borderRadius: '8px', fontSize: '12px', fontWeight: '700', border: promptMode === 'homeless'? '1px solid #2ea043' : '1px solid #30363d', cursor: 'pointer', transition: 'all 0.2s' }}>🏚️ Homeless Media</button>
+              <button onClick={() => { setPromptMode('threads'); if (rawBeritaContent) setPromptTeks(`${PROMPT_TEMPLATES.threads}\n\n${rawBeritaContent}`); }} style={{ flex: 1, backgroundColor: promptMode === 'threads'? '#1f6feb' : '#21262d', color: promptMode === 'threads'? '#ffffff' : '#8b949e', padding: '10px 12px', borderRadius: '8px', fontSize: '12px', fontWeight: '700', border: promptMode === 'threads'? '1px solid #388bfd' : '1px solid #30363d', cursor: 'pointer' }}>🧵 Threads / X</button>
+              <button onClick={() => { setPromptMode('homeless'); if (rawBeritaContent) setPromptTeks(`${PROMPT_TEMPLATES.homeless}\n\n${rawBeritaContent}`); }} style={{ flex: 1, backgroundColor: promptMode === 'homeless'? '#238636' : '#21262d', color: promptMode === 'homeless'? '#ffffff' : '#8b949e', padding: '10px 12px', borderRadius: '8px', fontSize: '12px', fontWeight: '700', border: promptMode === 'homeless'? '1px solid #2ea043' : '1px solid #30363d', cursor: 'pointer' }}>🏚️ Homeless Media</button>
             </div>
-            <div style={{ backgroundColor: '#161b22', border: '1px dashed #30363d', padding: '8px 10px', borderRadius: '8px', marginBottom: '12px', fontSize: '11px', color: '#8b949e' }}>{promptMode === 'threads'? <span>Mode <strong style={{color: '#58a6ff'}}>Threads/X</strong>: Identifikasi isu, 10 perspektif Pro (5) Kontra (5) satir & tajam, singkat.</span> : <span>Mode <strong style={{color: '#3fb950'}}>Homeless Media / AgoraVada</strong>: 10 judul hook + caption IG normatif + #AgoraVada.</span>}</div>
             <textarea style={{ width: '100%', backgroundColor: '#0d1117', border: '1px solid #30363d', color: '#e6edf3', padding: '12px', borderRadius: '10px', fontSize: '13px', minHeight: '280px', outline: 'none', marginBottom: '12px', boxSizing: 'border-box', resize: 'vertical' }} value={promptTeks} onChange={(e) => setPromptTeks(e.target.value)} />
             <div style={{ display: 'flex', gap: '10px' }}>
               <button style={{ width: '35%', backgroundColor: '#21262d', color: '#c9d1d9', padding: '12px', borderRadius: '10px', fontWeight: '600', fontSize: '13px', border: '1px solid #30363d', cursor: 'pointer' }} onClick={() => setCurrentPage(1)}>⬅ Kembali</button>
@@ -355,73 +321,20 @@ export default function AgoraVadaPortal() {
                   </div>
                   <div style={{ backgroundColor: '#161b22', padding: '16px', borderRadius: '10px', border: '1px solid #f0883e' }}>
                     <label style={{ fontSize: '11px', fontWeight: '700', color: '#f0883e', display: 'block', marginBottom: '6px' }}>🎨 UPLOAD MEDIA (Template)</label>
-                    <div style={{ fontSize: '10px', color: '#8b949e', marginBottom: '8px', lineHeight: '1.3' }}>Ganti template preview. Wajib ukuran <strong style={{color: '#f0883e'}}>1080 x 1350</strong> (IG Post).</div>
                     <input type="file" accept="image/*" onChange={handleUploadTemplate} style={{ fontSize: '11px', color: '#c9d1d9', width: '100%' }} />
-                    <div style={{ display: 'flex', gap: '6px', marginTop: '12px' }}>
-                      <button onClick={() => { setTemplateMode('agoravada'); const def = TEMPLATE_DEFAULTS.agoravada; setTeksX(def.teksX); setTeksY(def.teksY); setUkuranFont(def.ukuranFont); setJarakBaris(def.jarakBaris); setSumberX(def.sumberX); setSumberY(def.sumberY); setUkuranFontSumber(def.ukuranFontSumber); const tImg = new Image(); tImg.src = '/Agora Vada Template.png'; tImg.onload = () => setTemplateImgObj(tImg); }} style={{ flex: 1, backgroundColor: templateMode === 'agoravada'? '#f0883e' : '#21262d', color: templateMode === 'agoravada'? '#000' : '#c9d1d9', padding: '8px 6px', borderRadius: '6px', fontSize: '10px', fontWeight: '700', border: templateMode === 'agoravada'? '1px solid #f0883e' : '1px solid #30363d', cursor: 'pointer' }}>🏚️ Agora Vada</button>
-                      <button onClick={() => { setTemplateMode('agentlondo'); const def = TEMPLATE_DEFAULTS.agentlondo; setTeksX(def.teksX); setTeksY(def.teksY); setUkuranFont(def.ukuranFont); setJarakBaris(def.jarakBaris); setSumberX(def.sumberX); setSumberY(def.sumberY); setUkuranFontSumber(def.ukuranFontSumber); const tryLoadAgentLondo = (urls, index = 0) => { if (index >= urls.length) { alert('Gagal load template Agent Londo.'); return; } const tImg = new Image(); tImg.onload = () => setTemplateImgObj(tImg); tImg.onerror = () => tryLoadAgentLondo(urls, index + 1); tImg.src = urls[index]; }; tryLoadAgentLondo(['/AgentLondo.png', '/Agent Londo.png', '/AgentLondo Template.png', '/Agent Londo Template.png']); }} style={{ flex: 1, backgroundColor: templateMode === 'agentlondo'? '#58a6ff' : '#21262d', color: templateMode === 'agentlondo'? '#fff' : '#c9d1d9', padding: '8px 6px', borderRadius: '6px', fontSize: '10px', fontWeight: '700', border: templateMode === 'agentlondo'? '1px solid #58a6ff' : '1px solid #30363d', cursor: 'pointer' }}>🕵️ Agent Londo</button>
-                    </div>
                   </div>
                 </div>
               </div>
               <div style={{ backgroundColor: '#0d1117', border: '1px solid #30363d', borderRadius: '12px', padding: '16px' }}>
                 <label style={{ fontSize: '11px', fontWeight: '700', color: '#ffffff', display: 'block', marginBottom: '8px' }}>📝 EDIT JUDUL BERITA</label>
-                <div style={{ backgroundColor: '#21262d', borderRadius: '8px', padding: '6px', display: 'flex', gap: '4px', marginBottom: '8px', border: '1px solid #30363d' }}>
-                  <button onClick={() => handleFormat('italic')} style={{ backgroundColor: '#0d1117', color: '#c9d1d9', border: '1px solid #30363d', padding: '4px 8px', borderRadius: '4px', fontSize: '11px', cursor: 'pointer', fontStyle: 'italic' }}>I</button>
-                  <input type="color" defaultValue="#FFFFFF" onChange={(e) => handleFormat('foreColor', e.target.value)} style={{ width: '24px', height: '24px', padding: 0, border: 'none', borderRadius: '4px', cursor: 'pointer' }} title="Warna Teks" />
-                </div>
                 <div id="judul-editor" contentEditable suppressContentEditableWarning style={{ width: '100%', backgroundColor: '#0d1117', border: '1px solid #30363d', color: '#ffffff', padding: '12px', borderRadius: '8px', fontSize: '14px', minHeight: '80px', outline: 'none', boxSizing: 'border-box' }} onInput={(e) => setJudulHtml(e.currentTarget.innerHTML)} dangerouslySetInnerHTML={{ __html: judulHtml }}></div>
               </div>
-              <div style={{ display: 'flex', gap: '12px' }}>
-                <div style={{ flex: 1, backgroundColor: '#0d1117', padding: '12px 16px', borderRadius: '12px', border: '1px solid #30363d' }}>
-                  <label style={{ fontSize: '11px', fontWeight: '700', color: '#f78166', display: 'flex', justifyContent: 'space-between', marginBottom: '8px' }}><span>📍 KONTROL SUMBER BERITA</span><button onClick={() => { const def = TEMPLATE_DEFAULTS[templateMode]; setSumberX(def.sumberX); setSumberY(def.sumberY); setUkuranFontSumber(def.ukuranFontSumber); }} style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: '14px', padding: 0 }} title="Reset">🔄</button></label>
-                  <div style={{ display: 'grid', gridTemplateColumns: '1fr', gap: '8px' }}>
-                    <div><span style={{ fontSize: '10px', color: '#8b949e', display: 'flex', justifyContent: 'space-between' }}><span>Ukuran Font</span> <span>{ukuranFontSumber}</span></span><input type="range" min="15" max="150" step="1" value={ukuranFontSumber} onChange={(e) => setUkuranFontSumber(parseInt(e.target.value))} style={{ width: '100%', accentColor: '#f78166' }} /></div>
-                    <div style={{ display: 'flex', gap: '8px' }}><div style={{ flex: 1 }}><span style={{ fontSize: '10px', color: '#8b949e', display: 'flex', justifyContent: 'space-between' }}><span>Geser X</span> <span>{sumberX}</span></span><input type="range" min="0" max="1080" step="1" value={sumberX} onChange={(e) => setSumberX(parseInt(e.target.value))} style={{ width: '100%', accentColor: '#f78166' }} /></div><div style={{ flex: 1 }}><span style={{ fontSize: '10px', color: '#8b949e', display: 'flex', justifyContent: 'space-between' }}><span>Geser Y</span> <span>{sumberY}</span></span><input type="range" min="0" max="1350" step="1" value={sumberY} onChange={(e) => setSumberY(parseInt(e.target.value))} style={{ width: '100%', accentColor: '#f78166' }} /></div></div>
-                  </div>
-                </div>
-              </div>
-              <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
-                <div style={{ backgroundColor: '#0d1117', padding: '12px 16px', borderRadius: '12px', border: '1px solid #30363d' }}>
-                  <label style={{ fontSize: '11px', fontWeight: '700', color: '#3fb950', display: 'block', marginBottom: '8px' }}>🖼️ KONTROL SKALA GAMBAR</label>
-                  <div style={{ display: 'grid', gridTemplateColumns: '1fr', gap: '8px' }}>
-                    <div><span style={{ fontSize: '10px', color: '#8b949e', display: 'flex', justifyContent: 'space-between' }}><span>Zoom Skala</span> <span>{imgScale.toFixed(2)}</span></span><input type="range" min="0.2" max="3" step="0.05" value={imgScale} onChange={(e) => setImgScale(parseFloat(e.target.value))} style={{ width: '100%', accentColor: '#3fb950' }} /></div>
-                    <div><span style={{ fontSize: '10px', color: '#8b949e', display: 'flex', justifyContent: 'space-between' }}><span>Geser X</span> <span>{imgX}</span></span><input type="range" min="-1000" max="1000" step="10" value={imgX} onChange={(e) => setImgX(parseInt(e.target.value))} style={{ width: '100%', accentColor: '#3fb950' }} /></div>
-                    <div><span style={{ fontSize: '10px', color: '#8b949e', display: 'flex', justifyContent: 'space-between' }}><span>Geser Y</span> <span>{imgY}</span></span><input type="range" min="-1000" max="1000" step="10" value={imgY} onChange={(e) => setImgY(parseInt(e.target.value))} style={{ width: '100%', accentColor: '#3fb950' }} /></div>
-                  </div>
-                </div>
-                <div style={{ backgroundColor: '#0d1117', padding: '12px 16px', borderRadius: '12px', border: '1px solid #30363d' }}>
-                  <label style={{ fontSize: '11px', fontWeight: '700', color: '#a371f7', display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px' }}><span>✨ KONTROL POSISI JUDUL</span><button onClick={() => { const def = TEMPLATE_DEFAULTS[templateMode]; setTeksX(def.teksX); setTeksY(def.teksY); setUkuranFont(def.ukuranFont); setJarakBaris(def.jarakBaris); }} style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: '14px', padding: 0 }} title="Reset">🔄</button></label>
-                  <div style={{ display: 'grid', gridTemplateColumns: '1fr', gap: '8px' }}>
-                    <div><span style={{ fontSize: '10px', color: '#8b949e', display: 'flex', justifyContent: 'space-between' }}><span>Ukuran Font</span> <span>{ukuranFont}</span></span><input type="range" min="30" max="400" step="1" value={ukuranFont} onChange={(e) => setUkuranFont(parseInt(e.target.value))} style={{ width: '100%', accentColor: '#a371f7' }} /></div>
-                    <div><span style={{ fontSize: '10px', color: '#8b949e', display: 'flex', justifyContent: 'space-between' }}><span>Geser X (Min {MARGIN_PX}px)</span> <span>{teksX}</span></span><input type="range" min={MARGIN_PX} max={1080 - MARGIN_PX - 100} step="1" value={teksX} onChange={(e) => setTeksX(parseInt(e.target.value))} style={{ width: '100%', accentColor: '#a371f7' }} /></div>
-                    <div><span style={{ fontSize: '10px', color: '#8b949e', display: 'flex', justifyContent: 'space-between' }}><span>Geser Y</span> <span>{teksY}</span></span><input type="range" min={MARGIN_PX} max={1350 - MARGIN_PX - 100} step="1" value={teksY} onChange={(e) => setTeksY(parseInt(e.target.value))} style={{ width: '100%', accentColor: '#a371f7' }} /></div>
-                    <div style={{ marginTop: '4px', paddingTop: '8px', borderTop: '1px dashed #30363d' }}><span style={{ fontSize: '10px', color: '#8b949e', display: 'flex', justifyContent: 'space-between' }}><span>Jarak Antar Kalimat</span> <span>{jarakBaris}</span></span><input type="range" min="0.8" max="2.5" step="0.1" value={jarakBaris} onChange={(e) => setJarakBaris(parseFloat(e.target.value))} style={{ width: '100%', accentColor: '#a371f7' }} /></div>
-                  </div>
-                  <div style={{ display: 'flex', gap: '8px', marginTop: '14px', paddingTop: '12px', borderTop: '1px solid #30363d' }}>
-                    <button style={{ width: '25%', backgroundColor: '#21262d', color: '#c9d1d9', padding: '10px', borderRadius: '8px', fontWeight: '600', fontSize: '11px', border: '1px solid #30363d', cursor: 'pointer' }} onClick={() => setCurrentPage(2)}>⬅ Kembali</button>
-                    <button style={{ width: '35%', backgroundColor: '#238636', color: '#ffffff', padding: '10px', borderRadius: '8px', fontWeight: '700', fontSize: '11px', border: 'none', cursor: 'pointer' }} onClick={downloadGambar}>📥 Download</button>
-                    <button style={{ width: '40%', backgroundColor: '#E1306C', color: '#ffffff', padding: '10px', borderRadius: '8px', fontWeight: '700', fontSize: '11px', border: 'none', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '4px' }} onClick={openUploadModal}>📤 Upload IG</button>
-                  </div>
-                </div>
-              </div>
-            </div>
-            <div style={{ backgroundColor: '#0d1117', border: '1px solid #30363d', borderRadius: '12px', padding: '20px' }}>
-              <div style={{ backgroundColor: '#161b22', padding: '16px', borderRadius: '12px', border: '1px solid #30363d' }}>
-                <label style={{ fontSize: '12px', fontWeight: '800', color: '#f0883e', display: 'block', marginBottom: '12px', letterSpacing: '0.5px' }}>🪝 BASIC HOOK - Panduan Berkata-kata</label>
-                <div style={{ display: 'flex', gap: '16px', alignItems: 'flex-start' }}>
-                  <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', width: '180px', flexShrink: 0 }}>
-                    <button onClick={() => setSelectedHook('urgent')} style={{ backgroundColor: selectedHook === 'urgent'? '#f0883e' : '#21262d', color: selectedHook === 'urgent'? '#000' : '#c9d1d9', padding: '12px 10px', borderRadius: '8px', fontSize: '11px', fontWeight: '700', border: selectedHook === 'urgent'? '1px solid #f0883e' : '1px solid #30363d', cursor: 'pointer', textAlign: 'left' }}>🌪️ Bencana<br/><span style={{fontSize: '9px', fontWeight: '400', opacity: 0.8}}>Perintah + Fenomena + Lokasi</span></button>
-                    <button onClick={() => setSelectedHook('respond')} style={{ backgroundColor: selectedHook === 'respond'? '#3fb950' : '#21262d', color: selectedHook === 'respond'? '#000' : '#c9d1d9', padding: '12px 10px', borderRadius: '8px', fontSize: '11px', fontWeight: '700', border: selectedHook === 'respond'? '1px solid #3fb950' : '1px solid #30363d', cursor: 'pointer', textAlign: 'left' }}>🛡️ Respond Warga<br/><span style={{fontSize: '9px', fontWeight: '400', opacity: 0.8}}>Stay Safe + Emosi + Lokasi</span></button>
-                    <button onClick={() => setSelectedHook('versus')} style={{ backgroundColor: selectedHook === 'versus'? '#58a6ff' : '#21262d', color: selectedHook === 'versus'? '#000' : '#c9d1d9', padding: '12px 10px', borderRadius: '8px', fontSize: '11px', fontWeight: '700', border: selectedHook === 'versus'? '1px solid #58a6ff' : '1px solid #30363d', cursor: 'pointer', textAlign: 'left' }}>⚔️ Versus<br/><span style={{fontSize: '9px', fontWeight: '400', opacity: 0.8}}>Beda Respon Tokoh A & B</span></button>
-                    <button onClick={() => setSelectedHook('hoax')} style={{ backgroundColor: selectedHook === 'hoax'? '#f85149' : '#21262d', color: selectedHook === 'hoax'? '#fff' : '#c9d1d9', padding: '12px 10px', borderRadius: '8px', fontSize: '11px', fontWeight: '700', border: selectedHook === 'hoax'? '1px solid #f85149' : '1px solid #30363d', cursor: 'pointer', textAlign: 'left' }}>🚫 HOAX<br/><span style={{fontSize: '9px', fontWeight: '400', opacity: 0.8}}>Mancing Geram / Iba</span></button>
-                  </div>
-                  <div style={{ flex: 1, backgroundColor: '#0d1117', padding: '16px', borderRadius: '10px', border: '1px solid #21262d', minHeight: '300px' }}>
-                    {selectedHook === 'urgent' && <div style={{ fontSize: '12px', lineHeight: '1.6', color: '#c9d1d9' }}><div style={{ fontWeight: '800', color: '#ffffff', marginBottom: '10px', fontSize: '13px' }}>Rumus : Perintah! + Fenomena + Lokasi</div><div style={{ backgroundColor: '#161b22', padding: '8px 10px', borderRadius: '6px', marginBottom: '8px', borderLeft: '3px solid #f0883e' }}>Waspada! Hujan Ekstrem di Jabodetabek</div></div>}
-                    {selectedHook === 'respond' && <div style={{ fontSize: '12px', lineHeight: '1.6', color: '#c9d1d9' }}>Respond Warga: Stay Safe! + Emosi + Lokasi</div>}
-                    {selectedHook === 'versus' && <div style={{ fontSize: '12px', lineHeight: '1.6', color: '#c9d1d9' }}>Versus: Hadapi Isu + Beda Respon Tokoh</div>}
-                    {selectedHook === 'hoax' && <div style={{ fontSize: '12px', lineHeight: '1.6', color: '#c9d1d9' }}>HOAX: Mancing Geram/Iba</div>}
-                  </div>
+              <div style={{ backgroundColor: '#0d1117', padding: '12px 16px', borderRadius: '12px', border: '1px solid #30363d' }}>
+                <label style={{ fontSize: '11px', fontWeight: '700', color: '#a371f7', display: 'flex', justifyContent: 'space-between', marginBottom: '8px' }}><span>✨ KONTROL POSISI JUDUL</span><button onClick={() => { const def = TEMPLATE_DEFAULTS[templateMode]; setTeksX(def.teksX); setTeksY(def.teksY); setUkuranFont(def.ukuranFont); setJarakBaris(def.jarakBaris); }} style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: '14px', padding: 0 }}>🔄</button></label>
+                <div style={{ display: 'flex', gap: '8px', marginTop: '14px', paddingTop: '12px', borderTop: '1px solid #30363d' }}>
+                  <button style={{ width: '25%', backgroundColor: '#21262d', color: '#c9d1d9', padding: '10px', borderRadius: '8px', fontWeight: '600', fontSize: '11px', border: '1px solid #30363d', cursor: 'pointer' }} onClick={() => setCurrentPage(2)}>⬅ Kembali</button>
+                  <button style={{ width: '35%', backgroundColor: '#238636', color: '#ffffff', padding: '10px', borderRadius: '8px', fontWeight: '700', fontSize: '11px', border: 'none', cursor: 'pointer' }} onClick={downloadGambar}>📥 Download</button>
+                  <button style={{ width: '40%', backgroundColor: '#E1306C', color: '#ffffff', padding: '10px', borderRadius: '8px', fontWeight: '700', fontSize: '11px', border: 'none', cursor: 'pointer' }} onClick={openUploadModal}>📤 Upload IG</button>
                 </div>
               </div>
             </div>
@@ -429,67 +342,44 @@ export default function AgoraVadaPortal() {
         )}
       </div>
 
-        {/* ================= UPLOAD IG MODAL ================= */}
-        {showUploadModal && (
-          <div style={{ position: 'fixed', inset: 0, zIndex: 9999, backgroundColor: 'rgba(0,0,0,0.85)', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '16px' }}>
-            <div style={{ backgroundColor: '#161b22', border: '1px solid #30363d', borderRadius: '16px', width: '100%', maxWidth: '720px', maxHeight: '90vh', overflowY: 'auto', padding: '20px', boxShadow: '0 20px 50px rgba(0,0,0,0.8)' }}>
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px' }}>
-                <h2 style={{ fontSize: '16px', fontWeight: '800', color: '#fff', margin: 0 }}>📤 Upload ke Instagram</h2>
-                <button onClick={() => setShowUploadModal(false)} style={{ background: '#21262d', border: '1px solid #30363d', color: '#fff', borderRadius: '8px', padding: '6px 10px', cursor: 'pointer' }}>✕</button>
+      {showUploadModal && (
+        <div style={{ position:'fixed', inset:0, zIndex:9999, backgroundColor:'rgba(0,0,0,0.85)', display:'flex', alignItems:'center', justifyContent:'center', padding:'16px' }}>
+          <div style={{ backgroundColor:'#161b22', border:'1px solid #30363d', borderRadius:'16px', width:'100%', maxWidth:'720px', maxHeight:'90vh', overflowY:'auto', padding:'20px' }}>
+            <div style={{ display:'flex', justifyContent:'space-between', marginBottom:'16px' }}><h2 style={{ fontWeight:800, color:'#fff', margin:0 }}>📤 Upload ke Instagram</h2><button onClick={()=>setShowUploadModal(false)} style={{ background:'#21262d', border:'1px solid #30363d', color:'#fff', borderRadius:'8px', padding:'6px 10px' }}>✕</button></div>
+            {uploadStatus!=='idle' && (
+              <div style={{ marginBottom:'16px', backgroundColor:'#0d1117', padding:'12px', borderRadius:'10px', border:'1px solid #30363d' }}>
+                <div style={{ display:'flex', justifyContent:'space-between', marginBottom:'6px' }}><span style={{ fontSize:'11px', color:'#8b949e' }}>{uploadStepText}</span><span style={{ fontSize:'11px', color:'#fff', fontWeight:700 }}>{uploadProgress}%</span></div>
+                <div style={{ width:'100%', height:'8px', backgroundColor:'#21262d', borderRadius:'4px', overflow:'hidden' }}><div style={{ width:`${uploadProgress}%`, height:'100%', backgroundColor:uploadStatus==='error'?'#f85149':uploadStatus==='done'?'#3fb950':'#E1306C' }} /></div>
               </div>
-              {(uploadStatus!== 'idle') && (
-                <div style={{ marginBottom: '16px', backgroundColor: '#0d1117', padding: '12px', borderRadius: '10px', border: '1px solid #30363d' }}>
-                  <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '6px' }}>
-                    <span style={{ fontSize: '11px', color: '#8b949e' }}>{uploadStepText || 'Proses...'}</span>
-                    <span style={{ fontSize: '11px', color: '#fff', fontWeight: '700' }}>{uploadProgress}%</span>
-                  </div>
-                  <div style={{ width: '100%', height: '8px', backgroundColor: '#21262d', borderRadius: '4px', overflow: 'hidden' }}>
-                    <div style={{ width: `${uploadProgress}%`, height: '100%', backgroundColor: uploadStatus === 'error'? '#f85149' : uploadStatus === 'done'? '#3fb950' : '#E1306C', transition: 'width 0.3s ease' }} />
-                  </div>
+            )}
+            <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:'16px' }}>
+              <div>
+                <label style={{ fontSize:'11px', fontWeight:700, color:'#c9d1d9', display:'block', marginBottom:'8px' }}>Preview ({carouselPreviews.length}/9)</label>
+                <div style={{ display:'grid', gridTemplateColumns:'repeat(3,1fr)', gap:'8px', marginBottom:'12px' }}>
+                  {carouselPreviews.map((item,idx)=>(
+                    <div key={idx} style={{ position:'relative', aspectRatio:'1/1', backgroundColor:'#0d1117', borderRadius:'8px', overflow:'hidden', border:item.isMain?'2px solid #E1306C':'1px solid #30363d' }}>
+                      {item.type==='video'?<video src={item.url} style={{ width:'100%', height:'100%', objectFit:'cover' }} muted />:<img src={item.url} style={{ width:'100%', height:'100%', objectFit:'cover' }} alt={item.name} />}
+                      <div style={{ position:'absolute', top:'4px', left:'4px', backgroundColor:'rgba(0,0,0,0.7)', color:'#fff', fontSize:'9px', padding:'2px 6px', borderRadius:'4px' }}>{idx===0?'COVER':idx+1}</div>
+                      <button onClick={()=>removeCarouselItem(idx)} style={{ position:'absolute', top:'4px', right:'4px', backgroundColor:'#f85149', color:'#fff', border:'none', borderRadius:'50%', width:'20px', height:'20px', fontSize:'10px', cursor:'pointer' }}>✕</button>
+                    </div>
+                  ))}
+                  {carouselPreviews.length<9 && <label style={{ aspectRatio:'1/1', border:'1px dashed #30363d', borderRadius:'8px', display:'flex', flexDirection:'column', alignItems:'center', justifyContent:'center', cursor:'pointer', color:'#8b949e', fontSize:'11px', backgroundColor:'#0d1117' }}>＋Add<input type="file" accept="image/*,video/*" multiple onChange={handleAddCarouselFiles} style={{ display:'none' }} /></label>}
                 </div>
-              )}
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px' }}>
-                <div>
-                  <label style={{ fontSize: '11px', fontWeight: '700', color: '#c9d1d9', display: 'block', marginBottom: '8px' }}>Preview ({carouselPreviews.length}/9) {carouselPreviews.length > 1? '- Carousel' : '- Single'}</label>
-                  <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '8px', marginBottom: '12px' }}>
-                    {carouselPreviews.map((item, idx) => (
-                      <div key={idx} style={{ position: 'relative', aspectRatio: '1/1', backgroundColor: '#0d1117', borderRadius: '8px', overflow: 'hidden', border: item.isMain? '2px solid #E1306C' : '1px solid #30363d' }}>
-                        {item.type === 'video'? <video src={item.url} style={{ width: '100%', height: '100%', objectFit: 'cover' }} muted /> : <img src={item.url} style={{ width: '100%', height: '100%', objectFit: 'cover' }} alt={item.name} />}
-                        <div style={{ position: 'absolute', top: '4px', left: '4px', backgroundColor: 'rgba(0,0,0,0.7)', color: '#fff', fontSize: '9px', padding: '2px 6px', borderRadius: '4px' }}>{idx === 0? 'COVER' : idx+1}</div>
-                        <button onClick={() => removeCarouselItem(idx)} style={{ position: 'absolute', top: '4px', right: '4px', backgroundColor: '#f85149', color: '#fff', border: 'none', borderRadius: '50%', width: '20px', height: '20px', fontSize: '10px', cursor: 'pointer' }}>✕</button>
-                      </div>
-                    ))}
-                    {carouselPreviews.length < 9 && (
-                      <label style={{ aspectRatio: '1/1', border: '1px dashed #30363d', borderRadius: '8px', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', color: '#8b949e', fontSize: '11px', backgroundColor: '#0d1117' }}>
-                        <span style={{ fontSize: '20px' }}>＋</span>Add
-                        <input type="file" accept="image/*,video/*" multiple onChange={handleAddCarouselFiles} style={{ display: 'none' }} />
-                      </label>
-                    )}
-                  </div>
-                  <div style={{ backgroundColor: '#0d1117', padding: '10px', borderRadius: '8px', border: '1px solid #21262d' }}>
-                    <label style={{ fontSize: '11px', fontWeight: '700', color: '#E1306C', display: 'block', marginBottom: '6px' }}>📸 Tambah Foto / Video (Carousel IG)</label>
-                    <input type="file" accept="image/*,video/*" multiple onChange={handleAddCarouselFiles} style={{ width: '100%', fontSize: '11px', color: '#c9d1d9' }} />
-                    <div style={{ fontSize: '10px', color: '#8b949e', marginTop: '6px' }}>Maksimal 9. Format JPG/PNG untuk foto, MP4 untuk video. Cover = gambar pertama.</div>
-                  </div>
-                </div>
-                <div>
-                  <label style={{ fontSize: '11px', fontWeight: '700', color: '#c9d1d9', display: 'block', marginBottom: '8px' }}>📝 Caption Instagram</label>
-                  <textarea value={igCaption} onChange={(e) => setIgCaption(e.target.value)} placeholder="Tulis caption..." style={{ width: '100%', minHeight: '260px', backgroundColor: '#0d1117', border: '1px solid #30363d', color: '#e6edf3', padding: '12px', borderRadius: '10px', fontSize: '13px', outline: 'none', resize: 'vertical', boxSizing: 'border-box' }} />
-                  <div style={{ fontSize: '10px', color: '#8b949e', marginTop: '6px' }}>{igCaption.length} karakter</div>
-                  <div style={{ display: 'flex', gap: '8px', marginTop: '16px' }}>
-                    <button onClick={() => setShowUploadModal(false)} style={{ flex: 1, backgroundColor: '#21262d', color: '#c9d1d9', padding: '12px', borderRadius: '10px', fontWeight: '600', fontSize: '12px', border: '1px solid #30363d', cursor: 'pointer' }}>Batal</button>
-                    <button onClick={uploadToInstagram} disabled={uploadStatus === 'uploading' || uploadStatus === 'creating'} style={{ flex: 2, backgroundColor: uploadStatus === 'done'? '#238636' : '#E1306C', color: '#fff', padding: '12px', borderRadius: '10px', fontWeight: '700', fontSize: '12px', border: 'none', cursor: (uploadStatus === 'uploading' || uploadStatus === 'creating')? 'not-allowed' : 'pointer', opacity: (uploadStatus === 'uploading' || uploadStatus === 'creating')? 0.6 : 1 }}>
-                      {uploadStatus === 'idle'? `🚀 Upload ${carouselPreviews.length > 1? 'Carousel' : 'Post'} (${uploadProgress}%)` : uploadStatus === 'uploading'? `⏳ Uploading ${uploadProgress}%` : uploadStatus === 'creating'? `⚙️ ${uploadProgress}%` : uploadStatus === 'publishing'? `📡 Publishing ${uploadProgress}%` : uploadStatus === 'done'? '✅ Berhasil!' : '🔁 Coba Lagi'}
-                    </button>
-                  </div>
-                  {uploadStatus === 'done' && <div style={{ marginTop: '10px', backgroundColor: '#0d1117', border: '1px solid #238636', padding: '8px', borderRadius: '8px', fontSize: '11px', color: '#3fb950' }}>Berhasil publish! Cek Instagram @agoravada</div>}
-                  {uploadStatus === 'error' && <div style={{ marginTop: '10px', backgroundColor: '#0d1117', border: '1px solid #f85149', padding: '8px', borderRadius: '8px', fontSize: '11px', color: '#f85149' }}>{uploadStepText}</div>}
+                <input type="file" accept="image/*,video/*" multiple onChange={handleAddCarouselFiles} style={{ width:'100%', fontSize:'11px', color:'#c9d1d9' }} />
+                <div style={{ fontSize:'10px', color:'#8b949e', marginTop:'6px' }}>Max 9. Cover = canvas utama.</div>
+              </div>
+              <div>
+                <label style={{ fontSize:'11px', fontWeight:700, color:'#c9d1d9', display:'block', marginBottom:'8px' }}>Caption</label>
+                <textarea value={igCaption} onChange={(e)=>setIgCaption(e.target.value)} style={{ width:'100%', minHeight:'260px', backgroundColor:'#0d1117', border:'1px solid #30363d', color:'#e6edf3', padding:'12px', borderRadius:'10px', fontSize:'13px' }} />
+                <div style={{ display:'flex', gap:'8px', marginTop:'16px' }}>
+                  <button onClick={()=>setShowUploadModal(false)} style={{ flex:1, backgroundColor:'#21262d', color:'#c9d1d9', padding:'12px', borderRadius:'10px', border:'1px solid #30363d' }}>Batal</button>
+                  <button onClick={uploadToInstagram} style={{ flex:2, backgroundColor:uploadStatus==='done'?'#238636':'#E1306C', color:'#fff', padding:'12px', borderRadius:'10px', fontWeight:700, border:'none' }}>{uploadStatus==='done'?'✅ Berhasil!':`🚀 Upload (${uploadProgress}%)`}</button>
                 </div>
               </div>
             </div>
           </div>
-        )}
-      </div>
+        </div>
+      )}
     </div>
   );
 }
