@@ -1,5 +1,10 @@
-app/
-public/
-next.config.js  <- ada
-package.json
-// next.config.ts <- harus HILANG
+/** @type {import('next').NextConfig} */
+const nextConfig = {
+  images: {
+    remotePatterns: [
+      { protocol: 'https', hostname: '**' },
+    ],
+  },
+};
+
+module.exports = nextConfig;
