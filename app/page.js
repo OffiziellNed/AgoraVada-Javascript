@@ -1,6 +1,24 @@
 "use client";
 
 import React, { useState, useRef, useEffect } from 'react';
+import { upload } from '@vercel/blob/client';
+
+// Instagram hanya menerima foto JPEG (maks 8 MB, lebar 320–1440 px).
+// Semua foto tambahan dikonversi dulu di browser.
+async function toInstagramJpeg(file) {
+  if (!file.type.startsWith('image/')) return file;
+  const url = URL.createObjectURL(file);
+  try {
+    const img = await new Promise((res, rej) => { const i = new Image(); i.onload = () => res(i); i.onerror = rej; i.src = url; });
+    const scale = Math.min(1, 1440 / img.naturalWidth);
+    const c = document.createElement('canvas');
+    c.width = Math.round(img.naturalWidth * scale); c.height = Math.round(img.naturalHeight * scale);
+    const ctx = c.getContext('2d'); ctx.fillStyle = '#000'; ctx.fillRect(0, 0, c.width, c.height);
+    ctx.drawImage(img, 0, 0, c.width, c.height);
+    const blob = await new Promise((r) => c.toBlob(r, 'image/jpeg', 0.92));
+    return new File([blob], file.name.replace(/\.[^.]+$/, '') + '.jpg', { type: 'image/jpeg' });
+  } finally { URL.revokeObjectURL(url); }
+}
 
 export default function AgoraVadaPortal() {
   const [currentPage, setCurrentPage] = useState(1);
@@ -15,6 +33,8 @@ export default function AgoraVadaPortal() {
   const [uploadProgress, setUploadProgress] = useState(0);
   const [uploadStatus, setUploadStatus] = useState('idle');
   const [uploadStepText, setUploadStepText] = useState('');
+  const [publishedLink, setPublishedLink] = useState('');
+  const MAX_CAROUSEL = 10;
 
   const [judulHtml, setJudulHtml] = useState('');
   const [sumberBerita, setSumberBerita] = useState('');
@@ -78,9 +98,8 @@ export default function AgoraVadaPortal() {
         try { const img = await tryLoad(imageUrl); if (!isCancelled) setLoadedBgImg(img); } catch(e) {} return;
       }
       const proxies = [
-        `https://api.allorigins.win/raw?url=${encodeURIComponent(imageUrl)}`,
-        `https://wsrv.nl/?url=${encodeURIComponent(imageUrl)}`,
-        `https://corsproxy.io/?${encodeURIComponent(imageUrl)}`,
+        `/api/proxy-image?url=${encodeURIComponent(imageUrl)}`, // proxy sendiri (paling andal)
+        `https://wsrv.nl/?url=${encodeURIComponent(imageUrl)}&output=jpg`,
         imageUrl
       ];
       for (let proxy of proxies) {
@@ -253,15 +272,21 @@ export default function AgoraVadaPortal() {
     setCarouselFiles([file]);
     setCarouselPreviews([{url:previewUrl,type:'image',name:file.name,isMain:true}]);
     const judulText = stripHtml(judulHtml);
-    setIgCaption(`${judulText}\n\n${sumberBerita?`Sumber: ${sumberBerita}`:''}\n\n#AgoraVada`.trim());
-    setUploadProgress(0); setUploadStatus('idle'); setUploadStepText('');
+    const sumberLine = sumberBerita ? (/^sumber/i.test(sumberBerita) ? sumberBerita : `Sumber: ${sumberBerita}`) : '';
+    if (!igCaption.trim()) setIgCaption([judulText, sumberLine, '#AgoraVada'].filter(Boolean).join('\n\n'));
+    setUploadProgress(0); setUploadStatus('idle'); setUploadStepText(''); setPublishedLink('');
     setCurrentPage(4);
   };
-  const handleAddCarouselFiles = (e) => {
-    const files = Array.from(e.target.files||[]);
-    if (carouselFiles.length + files.length > 9){ alert(`Max 9, sudah ${carouselFiles.length} mau nambah ${files.length}`); return; }
-    const nf=[], np=[]; files.forEach(f=>{ nf.push(f); np.push({url:URL.createObjectURL(f),type:f.type.startsWith('video')?'video':'image',name:f.name,isMain:false}) });
-    setCarouselFiles(p=>[...p,...nf]); setCarouselPreviews(p=>[...p,...np]); e.target.value='';
+  const handleAddCarouselFiles = async (e) => {
+    const files = Array.from(e.target.files||[]); e.target.value='';
+    if (carouselFiles.length + files.length > MAX_CAROUSEL){ alert(`Maksimal ${MAX_CAROUSEL} media, sudah ${carouselFiles.length} mau nambah ${files.length}`); return; }
+    const nf=[], np=[];
+    for (const f of files) {
+      if (f.type.startsWith('video') && !['video/mp4','video/quicktime'].includes(f.type)) { alert(`${f.name}: video harus MP4/MOV`); continue; }
+      const ready = f.type.startsWith('image') ? await toInstagramJpeg(f) : f;
+      nf.push(ready); np.push({url:URL.createObjectURL(ready),type:ready.type.startsWith('video')?'video':'image',name:ready.name,isMain:false});
+    }
+    setCarouselFiles(p=>[...p,...nf]); setCarouselPreviews(p=>[...p,...np]);
   };
   const removeCarouselItem = (idx) => {
     if (carouselFiles.length===1){ alert('Minimal 1'); return; }
@@ -270,31 +295,29 @@ export default function AgoraVadaPortal() {
   };
   const uploadToInstagram = async () => {
     if (!igCaption.trim()) return alert('Caption kosong');
+    if (igCaption.length > 2200) return alert(`Caption ${igCaption.length} karakter, maksimal 2200`);
     try{
-      setUploadStatus('uploading'); setUploadProgress(2); setUploadStepText('Upload ke Blob...');
+      setUploadStatus('uploading'); setUploadProgress(2); setUploadStepText('Upload ke Blob...'); setPublishedLink('');
       const uploaded=[];
       for(let i=0;i<carouselFiles.length;i++){
         const file=carouselFiles[i];
-        const url=await new Promise((res,rej)=>{
-          const fd=new FormData(); fd.append('file',file);
-          const xhr=new XMLHttpRequest(); xhr.open('POST','/api/instagram/upload-image');
-          xhr.upload.onprogress=(e)=>{ if(e.lengthComputable){ const base=(i/carouselFiles.length)*40; const cur=(e.loaded/e.total)*(40/carouselFiles.length); setUploadProgress(Math.round(5+base+cur)); setUploadStepText(`File ${i+1}/${carouselFiles.length}: ${Math.round(e.loaded/e.total*100)}%`);} };
-          xhr.onload=()=>{
-            try{
-              const d=JSON.parse(xhr.responseText);
-              if(xhr.status>=200 && xhr.status<300 && d.url) res(d.url);
-              else rej(new Error(d.error || d.message || `Gagal upload ${xhr.status}: ${xhr.responseText.slice(0,150)}`));
-            }catch{ rej(new Error(`Server bukan JSON: ${xhr.responseText.slice(0,150)}`)); }
-          };
-          xhr.onerror=()=>rej(new Error('Network error - cek /api/instagram/upload-image ada?'));
-          xhr.send(fd);
+        // Upload langsung browser -> Vercel Blob (tidak kena limit 4.5 MB function)
+        const blob = await upload(`agoravada/${Date.now()}-${file.name.replace(/[^\w.-]/g,'_')}`, file, {
+          access: 'public',
+          handleUploadUrl: '/api/instagram/upload',
+          contentType: file.type,
+          onUploadProgress: ({ percentage }) => {
+            const base=(i/carouselFiles.length)*45; const cur=(percentage/100)*(45/carouselFiles.length);
+            setUploadProgress(Math.round(5+base+cur)); setUploadStepText(`File ${i+1}/${carouselFiles.length}: ${Math.round(percentage)}%`);
+          },
         });
-        uploaded.push({url,type:file.type.startsWith('video')?'video':'image'});
+        uploaded.push({url:blob.url,type:file.type.startsWith('video')?'video':'image'});
       }
-      setUploadProgress(55); setUploadStatus('creating'); setUploadStepText('Bikin container IG...');
+      const hasVideo = uploaded.some(u=>u.type==='video');
+      setUploadProgress(55); setUploadStatus('creating'); setUploadStepText(hasVideo ? 'Instagram sedang memproses video (bisa 1–3 menit)...' : 'Bikin container IG...');
       const r=await fetch('/api/instagram/publish',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({items:uploaded,caption:igCaption})});
-      const j=await r.json(); if(!r.ok) throw new Error(j.error || JSON.stringify(j));
-      setUploadProgress(100); setUploadStatus('done'); setUploadStepText('✅ Berhasil publish ke Instagram!');
+      const j=await r.json().catch(()=>({error:`Server error ${r.status} (kemungkinan timeout)`})); if(!r.ok) throw new Error(j.error || JSON.stringify(j));
+      setUploadProgress(100); setUploadStatus('done'); setUploadStepText('✅ Berhasil publish ke Instagram!'); setPublishedLink(j.permalink||'');
     }catch(err){ console.error(err); setUploadStatus('error'); setUploadStepText(err.message); }
   };
 
@@ -322,8 +345,10 @@ export default function AgoraVadaPortal() {
                     const res = await fetch("/api/tarik-berita", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ url: urlBerita }) });
                     const data = await res.json();
                     if(data.status === "success") {
-                      const promptSakti = `Tolong buat 10 judul berita menggunakan hook dan copywriter handal untuk media alternatif "AgoraVada", serta buatkan caption untuk instagram, normatif saja dan informatif. Pastikan diakhiri oleh sumber berita dan 3 hastag (wajib ada #AgoraVada sisanya disesuaikan dengan kata kunci subjek dan topik yang dibahas).\n\n${data.prompt}`;
-                      setPromptTeks(promptSakti);
+                      const bahan = `${data.prompt}\n\nLink: ${data.real_url || urlBerita}`;
+                      setRawBeritaContent(bahan);
+                      setIgCaption('');
+                      setPromptTeks(`${PROMPT_TEMPLATES[promptMode]}\n\n${bahan}`);
                       setSumberBerita(data.sumber || (urlBerita? `Sumber Berita: ${new URL(urlBerita).hostname}` : ''));
                       if(data.gambar_url) setImageUrl(data.gambar_url);
                       setCurrentPage(2);
@@ -332,7 +357,7 @@ export default function AgoraVadaPortal() {
                       alert("Gagal menyedot: " + pesanError);
                       setPromptTeks("Gagal menyedot data otomatis. Silakan ketik manual.");
                     }
-                  } catch(err) { alert("Gagal konek ke API Vercel. Pastikan folder app/api/tarik-berita/route.js sudah dibuat."); }
+                  } catch(err) { alert("Gagal konek ke /api/tarik-berita: " + err.message); setPromptTeks(''); }
                 }}>Tarik Data 🔄</button>
               <button style={{ width: '50%', backgroundColor: '#238636', color: '#ffffff', padding: '12px', borderRadius: '10px', fontWeight: '700', fontSize: '13px', border: 'none', cursor: 'pointer' }} onClick={() => {
                   if(urlBerita) { try { setSumberBerita(`Sumber Berita: ${new URL(urlBerita).hostname}`); } catch(e) { setSumberBerita(''); } }
@@ -516,11 +541,12 @@ export default function AgoraVadaPortal() {
               <div style={{ backgroundColor: '#0d1117', padding: '12px', borderRadius: '10px', border: '1px solid #30363d' }}>
                 <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '6px' }}><span style={{ fontSize: '11px', color: uploadStatus==='error'?'#f85149':'#8b949e' }}>{uploadStepText}</span><span style={{ fontSize: '11px', color: '#fff', fontWeight: 700 }}>{uploadProgress}%</span></div>
                 <div style={{ width: '100%', height: '8px', backgroundColor: '#21262d', borderRadius: '4px', overflow: 'hidden' }}><div style={{ width: `${uploadProgress}%`, height: '100%', backgroundColor: uploadStatus==='error'?'#f85149':uploadStatus==='done'?'#3fb950':'#E1306C', transition: 'width 0.3s' }} /></div>
+                {publishedLink && <a href={publishedLink} target="_blank" rel="noreferrer" style={{ display: 'inline-block', marginTop: '8px', fontSize: '12px', color: '#58a6ff' }}>Lihat postingan di Instagram ↗</a>}
               </div>
             )}
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '20px' }}>
               <div>
-                <label style={{ fontSize: '11px', fontWeight: 700, color: '#c9d1d9', display: 'block', marginBottom: '8px' }}>Preview Final ({carouselPreviews.length}/9) - Bentuk 1080x1350</label>
+                <label style={{ fontSize: '11px', fontWeight: 700, color: '#c9d1d9', display: 'block', marginBottom: '8px' }}>Preview Final ({carouselPreviews.length}/{MAX_CAROUSEL}) - Bentuk 1080x1350</label>
                 <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2,1fr)', gap: '12px', marginBottom: '12px' }}>
                   {carouselPreviews.map((item,idx)=>(
                     <div key={idx} style={{ position: 'relative', aspectRatio: '1080/1350', backgroundColor: '#000', borderRadius: '10px', overflow: 'hidden', border: item.isMain?'2px solid #E1306C':'1px solid #30363d' }}>
@@ -529,16 +555,16 @@ export default function AgoraVadaPortal() {
                       <button onClick={()=>removeCarouselItem(idx)} style={{ position: 'absolute', top: '6px', right: '6px', backgroundColor: '#f85149', color: '#fff', border: 'none', borderRadius: '50%', width: '22px', height: '22px', fontSize: '11px', cursor: 'pointer', fontWeight: 700 }}>✕</button>
                     </div>
                   ))}
-                  {carouselPreviews.length<9 && <label style={{ aspectRatio: '1080/1350', border: '1px dashed #30363d', borderRadius: '10px', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', color: '#8b949e', fontSize: '11px', backgroundColor: '#0d1117' }}>＋Add Foto/Video<input type="file" accept="image/*,video/*" multiple onChange={handleAddCarouselFiles} style={{ display: 'none' }} /></label>}
+                  {carouselPreviews.length<MAX_CAROUSEL && <label style={{ aspectRatio: '1080/1350', border: '1px dashed #30363d', borderRadius: '10px', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', color: '#8b949e', fontSize: '11px', backgroundColor: '#0d1117' }}>＋Add Foto/Video<input type="file" accept="image/*,video/mp4,video/quicktime" multiple onChange={handleAddCarouselFiles} style={{ display: 'none' }} /></label>}
                 </div>
                 <div style={{ fontSize: '10px', color: '#8b949e', backgroundColor: '#161b22', padding: '8px 10px', borderRadius: '8px', border: '1px solid #21262d' }}>Gambar COVER = hasil canvas final tanpa garis abu 1.5cm, sudah 1080x1350.</div>
               </div>
               <div>
-                <label style={{ fontSize: '11px', fontWeight: 700, color: '#a371f7', display: 'block', marginBottom: '8px' }}>📝 Caption Instagram</label>
+                <label style={{ fontSize: '11px', fontWeight: 700, color: igCaption.length>2200?'#f85149':'#a371f7', display: 'flex', justifyContent: 'space-between', marginBottom: '8px' }}><span>📝 Caption Instagram</span><span>{igCaption.length}/2200</span></label>
                 <textarea value={igCaption} onChange={(e)=>setIgCaption(e.target.value)} style={{ width: '100%', minHeight: '360px', backgroundColor: '#0d1117', border: '1px solid #30363d', color: '#e6edf3', padding: '12px', borderRadius: '10px', fontSize: '13px', outline: 'none', resize: 'vertical', boxSizing: 'border-box' }} />
                 <div style={{ display: 'flex', gap: '8px', marginTop: '16px' }}>
                   <button onClick={()=>setCurrentPage(3)} style={{ flex: 1, backgroundColor: '#21262d', color: '#c9d1d9', padding: '12px', borderRadius: '10px', border: '1px solid #30363d', cursor: 'pointer', fontWeight: 600, fontSize: '12px' }}>Batal</button>
-                  <button onClick={uploadToInstagram} disabled={uploadStatus==='uploading' || uploadStatus==='creating'} style={{ flex: 2, backgroundColor: uploadStatus==='done'?'#238636':'#E1306C', color: '#fff', padding: '12px', borderRadius: '10px', fontWeight: 700, border: 'none', cursor: uploadStatus==='uploading'?'not-allowed':'pointer', opacity: uploadStatus==='uploading'?0.6:1, fontSize: '12px' }}>{uploadStatus==='done'?'✅ Berhasil Terpublish!':uploadStatus==='error'?'🔄 Coba Lagi':`🚀 Upload ke IG (${uploadProgress}%)`}</button>
+                  <button onClick={uploadToInstagram} disabled={uploadStatus==='uploading' || uploadStatus==='creating'} style={{ flex: 2, backgroundColor: uploadStatus==='done'?'#238636':'#E1306C', color: '#fff', padding: '12px', borderRadius: '10px', fontWeight: 700, border: 'none', cursor: (uploadStatus==='uploading'||uploadStatus==='creating')?'not-allowed':'pointer', opacity: (uploadStatus==='uploading'||uploadStatus==='creating')?0.6:1, fontSize: '12px' }}>{uploadStatus==='done'?'✅ Berhasil Terpublish!':uploadStatus==='error'?'🔄 Coba Lagi':`🚀 Upload ke IG (${uploadProgress}%)`}</button>
                 </div>
               </div>
             </div>

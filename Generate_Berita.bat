@@ -7,7 +7,6 @@ echo =========================================
 :: Buka browser otomatis ke alamat lokal
 start http://localhost:3000
 
-:: Paksa Next.js menggunakan Webpack (bypass Turbopack)
-call npx next dev --webpack
+call npx next dev
 
 pause
