@@ -44,6 +44,8 @@ export default function AgoraVadaPortal() {
     threads: `Tolong identifikasi isu, paparkan fakta penting, berikan 10 perspektif 5 opini Pro dan 5 Opini Kontra untuk X atau Threads, Jika kontra boleh gunakan Bahasa satir, sarkas, tajam. Pastikan singkat singkat saja`
   };
   const [isCopied, setIsCopied] = useState(false);
+  const [isTarik, setIsTarik] = useState(false);
+  const autoTarikRef = useRef(false);
   const [imgX, setImgX] = useState(0);
   const [imgY, setImgY] = useState(0);
   const [imgScale, setImgScale] = useState(1);
@@ -321,6 +323,62 @@ export default function AgoraVadaPortal() {
     }catch(err){ console.error(err); setUploadStatus('error'); setUploadStepText(err.message); }
   };
 
+  // ---------- Tarik berita (dipakai tombol "Tarik Data" & link dari Public Trend Radar) ----------
+  const tarikBerita = async (targetUrl, fallbackJudul = '') => {
+    if (!targetUrl) return alert("Masukkan link dulu!");
+    setIsTarik(true);
+    setPromptTeks("Menyedot data dari web, tunggu sebentar...");
+    try {
+      const res = await fetch("/api/tarik-berita", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ url: targetUrl }) });
+      const data = await res.json();
+      if (data.status === "success") {
+        const bahan = `${data.prompt}\n\nLink: ${data.real_url || targetUrl}`;
+        setRawBeritaContent(bahan);
+        setIgCaption('');
+        setPromptTeks(`${PROMPT_TEMPLATES[promptMode]}\n\n${bahan}`);
+        let host = '';
+        try { host = new URL(data.real_url || targetUrl).hostname.replace(/^www\./, ''); } catch (e) {}
+        setSumberBerita(data.sumber || (host ? `Sumber Berita: ${host}` : ''));
+        if (data.gambar_url) setImageUrl(data.gambar_url);
+        setCurrentPage(2);
+      } else {
+        const pesanError = data.error || data.message || data.details || data.detail || "Terhalang sistem keamanan website.";
+        if (fallbackJudul) {
+          // Dari Radar: tetap lanjut dengan judul + link supaya bisa diisi manual
+          const bahan = `Judul: ${fallbackJudul}\n\nIsi Berita Lengkap:\n(Gagal ditarik otomatis: ${pesanError}. Tempel isi berita di sini.)\n\nLink: ${targetUrl}`;
+          setRawBeritaContent(bahan);
+          setPromptTeks(`${PROMPT_TEMPLATES[promptMode]}\n\n${bahan}`);
+          setCurrentPage(2);
+          alert("Isi berita gagal ditarik otomatis, tapi judul & link sudah dimasukkan. Tempel isi beritanya manual ya.\n\nDetail: " + pesanError);
+        } else {
+          alert("Gagal menyedot: " + pesanError);
+          setPromptTeks("Gagal menyedot data otomatis. Silakan ketik manual.");
+        }
+      }
+    } catch (err) {
+      alert("Gagal konek ke /api/tarik-berita: " + err.message);
+      setPromptTeks('');
+    } finally {
+      setIsTarik(false);
+    }
+  };
+
+  // Dibuka dari Public Trend Radar: /?url=<link berita>&judul=<judul>
+  // -> otomatis tarik berita lalu lompat ke halaman prompt.
+  useEffect(() => {
+    if (autoTarikRef.current) return;
+    const params = new URLSearchParams(window.location.search);
+    const linkDariRadar = params.get('url');
+    if (!linkDariRadar) return;
+    autoTarikRef.current = true;
+    const judulDariRadar = params.get('judul') || '';
+    setUrlBerita(linkDariRadar);
+    // Bersihkan URL supaya refresh halaman tidak menarik ulang
+    window.history.replaceState(null, '', window.location.pathname);
+    tarikBerita(linkDariRadar, judulDariRadar);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
   const handleCopyPrompt = () => {
     navigator.clipboard.writeText(promptTeks);
     setIsCopied(true);
@@ -338,27 +396,7 @@ export default function AgoraVadaPortal() {
             <h2 style={{ fontSize: '15px', fontWeight: '700', marginBottom: '16px', color: '#c9d1d9', borderBottom: '1px solid #30363d', paddingBottom: '8px' }}>1. Masukkan Link Berita</h2>
             <input type="text" placeholder="https://news.com/..." style={{ width: '100%', backgroundColor: '#0d1117', border: '1px solid #30363d', color: '#ffffff', padding: '12px 14px', borderRadius: '10px', fontSize: '14px', outline: 'none', marginBottom: '16px', boxSizing: 'border-box' }} value={urlBerita} onChange={(e) => setUrlBerita(e.target.value)} />
             <div style={{ display: 'flex', gap: '10px' }}>
-              <button style={{ width: '50%', backgroundColor: '#21262d', color: '#c9d1d9', padding: '12px', borderRadius: '10px', fontWeight: '600', fontSize: '13px', border: '1px solid #30363d', cursor: 'pointer' }} onClick={async () => {
-                  if (!urlBerita) return alert("Masukkan link dulu!");
-                  setPromptTeks("Menyedot data dari web, tunggu sebentar...");
-                  try {
-                    const res = await fetch("/api/tarik-berita", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ url: urlBerita }) });
-                    const data = await res.json();
-                    if(data.status === "success") {
-                      const bahan = `${data.prompt}\n\nLink: ${data.real_url || urlBerita}`;
-                      setRawBeritaContent(bahan);
-                      setIgCaption('');
-                      setPromptTeks(`${PROMPT_TEMPLATES[promptMode]}\n\n${bahan}`);
-                      setSumberBerita(data.sumber || (urlBerita? `Sumber Berita: ${new URL(urlBerita).hostname}` : ''));
-                      if(data.gambar_url) setImageUrl(data.gambar_url);
-                      setCurrentPage(2);
-                    } else {
-                      const pesanError = data.error || data.message || data.details || data.detail || "Terhalang sistem keamanan website.";
-                      alert("Gagal menyedot: " + pesanError);
-                      setPromptTeks("Gagal menyedot data otomatis. Silakan ketik manual.");
-                    }
-                  } catch(err) { alert("Gagal konek ke /api/tarik-berita: " + err.message); setPromptTeks(''); }
-                }}>Tarik Data 🔄</button>
+              <button style={{ width: '50%', backgroundColor: '#21262d', color: '#c9d1d9', padding: '12px', borderRadius: '10px', fontWeight: '600', fontSize: '13px', border: '1px solid #30363d', cursor: 'pointer' }} disabled={isTarik} onClick={() => tarikBerita(urlBerita)}>{isTarik ? 'Menyedot... ⏳' : 'Tarik Data 🔄'}</button>
               <button style={{ width: '50%', backgroundColor: '#238636', color: '#ffffff', padding: '12px', borderRadius: '10px', fontWeight: '700', fontSize: '13px', border: 'none', cursor: 'pointer' }} onClick={() => {
                   if(urlBerita) { try { setSumberBerita(`Sumber Berita: ${new URL(urlBerita).hostname}`); } catch(e) { setSumberBerita(''); } }
                   setCurrentPage(3);
