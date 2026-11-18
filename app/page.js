@@ -324,13 +324,15 @@ export default function AgoraVadaPortal() {
   };
 
   // ---------- Tarik berita (dipakai tombol "Tarik Data" & link dari Public Trend Radar) ----------
-  const tarikBerita = async (targetUrl, fallbackJudul = '') => {
+  const tarikBerita = async (targetUrl, fallbackJudul = '', domainMedia = '') => {
     if (!targetUrl) return alert("Masukkan link dulu!");
     setIsTarik(true);
     setPromptTeks("Menyedot data dari web, tunggu sebentar...");
     try {
-      const res = await fetch("/api/tarik-berita", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ url: targetUrl }) });
+      const res = await fetch("/api/tarik-berita", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ url: targetUrl, judul: fallbackJudul, domain: domainMedia }) });
       const data = await res.json();
+      // Link Google News yang berhasil dikonversi -> tampilkan link asli di kolom
+      if (data.real_url && !data.real_url.includes('news.google.com')) setUrlBerita(data.real_url);
       if (data.status === "success") {
         const bahan = `${data.prompt}\n\nLink: ${data.real_url || targetUrl}`;
         setRawBeritaContent(bahan);
@@ -372,10 +374,11 @@ export default function AgoraVadaPortal() {
     if (!linkDariRadar) return;
     autoTarikRef.current = true;
     const judulDariRadar = params.get('judul') || '';
+    const domainDariRadar = params.get('sumber') || '';
     setUrlBerita(linkDariRadar);
     // Bersihkan URL supaya refresh halaman tidak menarik ulang
     window.history.replaceState(null, '', window.location.pathname);
-    tarikBerita(linkDariRadar, judulDariRadar);
+    tarikBerita(linkDariRadar, judulDariRadar, domainDariRadar);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
@@ -611,4 +614,4 @@ export default function AgoraVadaPortal() {
       </div>
     </div>
   );
-} 
+}
